@@ -3,7 +3,7 @@ import valueParser from 'postcss-value-parser';
 import colorNames from 'color-name';
 import { gunzipSync } from 'node:zlib';
 
-export const pageURL = 'https://simochee.backlog.com/this-page-does-not-exist';
+export const pageURL = process.env.BACKLOG_PAGE_URL || 'https://simochee.backlog.com/this-page-does-not-exist';
 
 export async function download(url, allow404 = false) {
   const response = await fetch(url, { redirect: 'error', signal: AbortSignal.timeout(30000) });
@@ -22,7 +22,12 @@ export function stylesheetURLs(html) {
     const attrs = Object.fromEntries([...link[0].matchAll(/([\w-]+)\s*=\s*["']([^"']*)["']/g)]
       .map((match) => [match[1].toLowerCase(), match[2]]));
     if (attrs.rel?.split(/\s+/).includes('stylesheet') && attrs.href) {
-      urls.add(new URL(attrs.href.replaceAll('&amp;', '&'), pageURL).href);
+      const input = new URL(attrs.href.replaceAll('&amp;', '&'), pageURL).href;
+      try {
+        urls.add(validateStylesheetURL(input));
+      } catch {
+        console.error(`Warning: skipped stylesheet outside HTTPS assets.backlog.com: ${input}`);
+      }
     }
   }
   if (!urls.size) throw new Error('No stylesheet links discovered');
@@ -52,38 +57,32 @@ export function inspectCSS(css) {
     });
     if (isColor) colors.add(decl.prop);
   }
-  // Follow aliases and fallback references until the dependency set is stable.
-  let changed;
+  let dependenciesChanged;
   do {
-    changed = false;
+    dependenciesChanged = false;
     for (const decl of declarations) {
       const refs = [...decl.value.matchAll(/var\(\s*(--[\w-]+)/g)].map((match) => match[1]);
       if (refs.some((name) => colors.has(name)) && !colors.has(decl.prop)) {
         colors.add(decl.prop);
-        changed = true;
+        dependenciesChanged = true;
       }
       if (refs.some((name) => composites.has(name)) && !composites.has(decl.prop)) {
         composites.add(decl.prop);
-        changed = true;
+        dependenciesChanged = true;
       }
     }
-  } while (changed);
-  const selectors = new Set(declarations.filter((decl) => colors.has(decl.prop))
-    .map((decl) => decl.parent.selector).filter(Boolean));
-  return { names: [...colors].sort(), composites: [...composites].filter((name) => colors.has(name)).sort(), selectors: [...selectors].sort() };
+  } while (dependenciesChanged);
+  return { names: [...colors].sort(), composites: [...composites].filter((name) => colors.has(name)).sort() };
 }
 
 export async function extract(extraURLs = []) {
-  const urls = [...new Set([...stylesheetURLs(await download(pageURL, true)), ...extraURLs]
-    .map(validateStylesheetURL))];
-  const stylesheets = [];
-  for (const url of urls) {
+  const validatedExtras = extraURLs.map(validateStylesheetURL);
+  const urls = [...new Set([...stylesheetURLs(await download(pageURL, true)), ...validatedExtras])];
+  const stylesheets = await Promise.all(urls.map(async (url) => {
     const css = await download(url);
-    stylesheets.push(css);
-    const result = inspectCSS(css);
-    console.error(`Source: ${url} (${result.names.length} color variables)`);
-  }
-  // Resolve references across stylesheet boundaries as well as within each file.
+    console.error(`Source: ${url}`);
+    return css;
+  }));
   const result = inspectCSS(stylesheets.join('\n'));
   if (!result.names.length) throw new Error('No color variables discovered');
   return { names: result.names.filter((name) => !result.composites.includes(name)), composites: result.composites, total: result.names.length };

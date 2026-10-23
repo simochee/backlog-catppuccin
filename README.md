@@ -55,6 +55,9 @@ npm test
 
 The extractor discovers stylesheet URLs at runtime from the public error page
 at `https://simochee.backlog.com/this-page-does-not-exist`; it never signs in.
+Set `BACKLOG_PAGE_URL` to override the discovery page (relative stylesheet links
+are resolved against that URL). Discovered stylesheets outside HTTPS
+`assets.backlog.com` are skipped with a warning on stderr.
 Optional extra stylesheet URLs can be supplied after `--` to either extraction
 or coverage. Only HTTPS URLs on `assets.backlog.com` are accepted:
 

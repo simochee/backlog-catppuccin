@@ -1,13 +1,15 @@
+import { pathToFileURL } from 'node:url';
 import { readFile } from 'node:fs/promises';
 import { extract } from './source.mjs';
 
 export function missingAssignments(names, source) {
-  const withoutComments = source.replace(/\/\*[\s\S]*?\*\//g, '');
+  const withoutComments = source.replace(/"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\/\*[\s\S]*?\*\/|\/\/[^\r\n]*/g,
+    (token) => token.startsWith('/') ? ' ' : token);
   const assigned = new Set([...withoutComments.matchAll(/(--[\w-]+)\s*:\s*[^;{}]+;/g)].map((match) => match[1]));
   return names.filter((name) => !assigned.has(name));
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
     const { names, composites, total } = await extract(process.argv.slice(2));
     const source = await readFile(new URL('../catppuccin.user.less', import.meta.url), 'utf8');
