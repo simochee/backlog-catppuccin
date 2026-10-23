@@ -76,7 +76,7 @@ export function inspectCSS(css) {
 }
 
 export async function extract(extraURLs = []) {
-  const validatedExtras = extraURLs.map(validateStylesheetURL);
+  const validatedExtras = extraURLs.filter(Boolean).map(validateStylesheetURL);
   const urls = [...new Set([...stylesheetURLs(await download(pageURL, true)), ...validatedExtras])];
   const stylesheets = await Promise.all(urls.map(async (url) => {
     const css = await download(url);
