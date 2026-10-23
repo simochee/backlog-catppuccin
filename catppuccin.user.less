@@ -32,14 +32,20 @@
 
   #tooltips(@flavor) {
     #lib.palette();
-    [data-tooltip], .message-tip, .simptip-success, .simptip-info,
-    .simptip-danger, .simptip-warning, .simptip-error {
-      --tooltipBaseColor: @crust;
-    }
+    .simptip-success { --tooltipBaseColor: @green !important; }
+    .simptip-info { --tooltipBaseColor: @blue !important; }
+    .simptip-danger, .simptip-error { --tooltipBaseColor: @red !important; }
+    .simptip-warning { --tooltipBaseColor: @yellow !important; }
   }
 
   #catppuccin(@flavor) {
     #lib.palette();
+    @projectBase: mix(@accent, @base, 20%);
+    @projectBase2: mix(@accent, @base, 8%);
+    @projectSub1: mix(@accent, @base, 50%);
+    .darkContent() when (@flavor = latte) { @darkContent: @text; }
+    .darkContent() when not (@flavor = latte) { @darkContent: @crust; }
+    .darkContent();
 
     // aiColor
     --aiColor: @mauve;
@@ -76,8 +82,8 @@
     // commonColor
     --commonColorAcua: @teal;
     --commonColorAcua-rgb: red(@teal), green(@teal), blue(@teal);
-    --commonColorBlack: @crust;
-    --commonColorBlack-rgb: red(@crust), green(@crust), blue(@crust);
+    --commonColorBlack: @darkContent;
+    --commonColorBlack-rgb: red(@darkContent), green(@darkContent), blue(@darkContent);
     --commonColorGray: @overlay0;
     --commonColorGray-rgb: red(@overlay0), green(@overlay0), blue(@overlay0);
     --commonColorGreen: @green;
@@ -99,13 +105,13 @@
     // defaultColor
     --defaultColorAccent: @accent;
     --defaultColorAccent-rgb: red(@accent), green(@accent), blue(@accent);
-    --defaultColorBase: @accent;
-    --defaultColorBase-2: @accent;
-    --defaultColorBase-rgb: red(@accent), green(@accent), blue(@accent);
+    --defaultColorBase: @projectBase;
+    --defaultColorBase-2: @projectBase2;
+    --defaultColorBase-rgb: round(red(@projectBase)), round(green(@projectBase)), round(blue(@projectBase));
     --defaultColorLink: @accent;
     --defaultColorMain: @accent;
-    --defaultColorMainInverse: @accent;
-    --defaultColorSub-1: @accent;
+    --defaultColorMainInverse: @base;
+    --defaultColorSub-1: @projectSub1;
     // diffColor
     --diffColorAddedBase: fade(@green, 16%);
     --diffColorAddedBase-2: fade(@green, 16%);
@@ -185,7 +191,7 @@
     --textColorWeak-rgb: red(@subtext0), green(@subtext0), blue(@subtext0);
     --textColorWeightAdjustment: @text;
     // tooltipBaseColor
-    --tooltipBaseColor: @crust;
+    --tooltipBaseColor: @darkContent;
     // warningColor
     --warningColorScaleAccent: @yellow;
     --warningColorScaleBase: fade(@yellow, 16%);
