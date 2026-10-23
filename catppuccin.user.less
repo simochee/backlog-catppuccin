@@ -192,6 +192,11 @@
     --textColorWeightAdjustment: @text;
     // tooltipBaseColor
     --tooltipBaseColor: @darkContent;
+    // Backlog redefines this on the elements themselves in dark mode, so the
+    // value inherited from :root/body does not reach them.
+    [data-tooltip], .message-tip {
+      --tooltipBaseColor: @darkContent;
+    }
     // warningColor
     --warningColorScaleAccent: @yellow;
     --warningColorScaleBase: fade(@yellow, 16%);
