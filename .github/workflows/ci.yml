@@ -28,8 +28,8 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci --ignore-scripts
-      - run: npm run --if-present test
-      - run: npm run --if-present check:less
+      - run: npm run test
+      - run: npm run check:less
 
   # Not a required check: the result depends on Backlog's deployed CSS, so a
   # Backlog release must not block unrelated pull requests.
@@ -44,4 +44,4 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci --ignore-scripts
-      - run: npm run --if-present check:coverage
+      - run: npm run check:coverage
