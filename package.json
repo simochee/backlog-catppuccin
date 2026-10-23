@@ -5,5 +5,17 @@
   "type": "module",
   "engines": {
     "node": ">=24"
+  },
+  "scripts": {
+    "extract": "node scripts/extract.mjs",
+    "check:coverage": "node scripts/coverage.mjs",
+    "check:less": "node scripts/compile.mjs",
+    "test": "node --test"
+  },
+  "devDependencies": {
+    "color-name": "2.1.0",
+    "less": "4.6.7",
+    "postcss": "8.5.31",
+    "postcss-value-parser": "4.2.0"
   }
 }
