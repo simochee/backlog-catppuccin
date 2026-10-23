@@ -1,0 +1,197 @@
+/* ==UserStyle==
+@name Backlog Catppuccin
+@namespace github.com/simochee/backlog-catppuccin
+@homepageURL https://github.com/simochee/backlog-catppuccin
+@version 2026.10.24
+@updateURL https://github.com/simochee/backlog-catppuccin/raw/main/catppuccin.user.less
+@supportURL https://github.com/simochee/backlog-catppuccin/issues
+@description Soothing pastel theme for Backlog
+@author simochee
+@license MIT
+
+@preprocessor less
+@var select lightFlavor "Light Flavor" ["latte:Latte*", "frappe:Frappé", "macchiato:Macchiato", "mocha:Mocha"]
+@var select darkFlavor "Dark Flavor" ["latte:Latte", "frappe:Frappé", "macchiato:Macchiato", "mocha:Mocha*"]
+@var select accentColor "Accent" ["rosewater:Rosewater", "flamingo:Flamingo", "pink:Pink", "mauve:Mauve*", "red:Red", "maroon:Maroon", "peach:Peach", "yellow:Yellow", "green:Green", "teal:Teal", "blue:Blue", "sapphire:Sapphire", "sky:Sky", "lavender:Lavender", "subtext0:Gray"]
+==/UserStyle== */
+
+@import "https://userstyles.catppuccin.com/lib/std/v1.less";
+
+@-moz-document regexp("https?://([a-zA-Z0-9-]+\\.)+backlog\\.(com|jp)(:[0-9]+)?/.*"), regexp("https?://([a-zA-Z0-9-]+\\.)+backlogtool\\.com(:[0-9]+)?/.*") {
+  // Repeated :root raises specificity above site dark/project-theme rules.
+  :root:root:root:root:root {
+    #catppuccin(@lightFlavor);
+    body { #catppuccin(@lightFlavor); }
+    #tooltips(@lightFlavor);
+  }
+  :root:root:root:root:root.dark-mode {
+    #catppuccin(@darkFlavor);
+    body { #catppuccin(@darkFlavor); }
+    #tooltips(@darkFlavor);
+  }
+
+  #tooltips(@flavor) {
+    #lib.palette();
+    [data-tooltip], .message-tip, .simptip-success, .simptip-info,
+    .simptip-danger, .simptip-warning, .simptip-error {
+      --tooltipBaseColor: @crust;
+    }
+  }
+
+  #catppuccin(@flavor) {
+    #lib.palette();
+
+    // aiColor
+    --aiColor: @mauve;
+    --aiColorHover: @mauve;
+    // AI icon
+    --aiIconColor: @mauve;
+    // backgroundColor
+    --backgroundColorBase: @base;
+    --backgroundColorDefault: @base;
+    --backgroundColorDisabled: @surface0;
+    --backgroundColorDsabled: @surface0;
+    --backgroundColorHighlightUpdate: @surface0;
+    --backgroundColorHover: @surface1;
+    --backgroundColorPrimary: @surface0;
+    --backgroundColorSchemeBase: @crust;
+    --backgroundColorSchemeBase-rgb: red(@crust), green(@crust), blue(@crust);
+    --backgroundColorUpdate: @surface0;
+    --backgroundColorUpdateHover: @surface1;
+    --backgroundColorWeak: @mantle;
+    --backgroundColorWeakOnBaseBG: @mantle;
+    // borderColor
+    --borderColorAi: @mauve;
+    --borderColorCardBG: @surface1;
+    --borderColorDefault: @surface1;
+    --borderColorFormElement: @overlay0;
+    --borderColorOnBaseElement: @surface1;
+    --borderColorPrimary: @overlay0;
+    --borderColorWeak: @surface0;
+    // brandColor
+    --brandColorBacklog: @green;
+    --brandColorCacoo: @blue;
+    --brandColorNulab: @text;
+    --brandColorTypetalk: @peach;
+    // commonColor
+    --commonColorAcua: @teal;
+    --commonColorAcua-rgb: red(@teal), green(@teal), blue(@teal);
+    --commonColorBlack: @crust;
+    --commonColorBlack-rgb: red(@crust), green(@crust), blue(@crust);
+    --commonColorGray: @overlay0;
+    --commonColorGray-rgb: red(@overlay0), green(@overlay0), blue(@overlay0);
+    --commonColorGreen: @green;
+    --commonColorGreen-rgb: red(@green), green(@green), blue(@green);
+    --commonColorLime: @green;
+    --commonColorLime-rgb: red(@green), green(@green), blue(@green);
+    --commonColorOrange: @peach;
+    --commonColorOrange-rgb: red(@peach), green(@peach), blue(@peach);
+    --commonColorPink: @pink;
+    --commonColorPink-rgb: red(@pink), green(@pink), blue(@pink);
+    --commonColorPurple: @mauve;
+    --commonColorPurple-rgb: red(@mauve), green(@mauve), blue(@mauve);
+    --commonColorRed: @red;
+    --commonColorRed-rgb: red(@red), green(@red), blue(@red);
+    --commonColorShockingPink: @flamingo;
+    --commonColorShockingPink-rgb: red(@flamingo), green(@flamingo), blue(@flamingo);
+    --commonColorYellow: @yellow;
+    --commonColorYellow-rgb: red(@yellow), green(@yellow), blue(@yellow);
+    // defaultColor
+    --defaultColorAccent: @accent;
+    --defaultColorAccent-rgb: red(@accent), green(@accent), blue(@accent);
+    --defaultColorBase: @accent;
+    --defaultColorBase-2: @accent;
+    --defaultColorBase-rgb: red(@accent), green(@accent), blue(@accent);
+    --defaultColorLink: @accent;
+    --defaultColorMain: @accent;
+    --defaultColorMainInverse: @accent;
+    --defaultColorSub-1: @accent;
+    // diffColor
+    --diffColorAddedBase: fade(@green, 16%);
+    --diffColorAddedBase-2: fade(@green, 16%);
+    --diffColorAddedBaseHover: fade(@green, 24%);
+    --diffColorAddedText: @green;
+    --diffColorChangedBase: fade(@yellow, 16%);
+    --diffColorChangedBase-2: fade(@yellow, 16%);
+    --diffColorChangedText: @yellow;
+    --diffColorDeletedBase: fade(@red, 16%);
+    --diffColorDeletedBase-2: fade(@red, 16%);
+    --diffColorDeletedBaseHover: fade(@red, 24%);
+    --diffColorDeletedText: @red;
+    // errorColor
+    --errorColorScaleAccent: @red;
+    --errorColorScaleBase: fade(@red, 16%);
+    --errorColorScaleText: @red;
+    // filesActionColor
+    --filesActionColor: @yellow;
+    --filesActionColor-rgb: red(@yellow), green(@yellow), blue(@yellow);
+    // gitActionColor
+    --gitActionColor: @peach;
+    --gitActionColor-rgb: red(@peach), green(@peach), blue(@peach);
+    // iconColor
+    --iconColorDefault: @subtext1;
+    --iconColorDisabled: @overlay0;
+    --iconColorDsabled: @overlay0;
+    --iconColorPseudo: @subtext0;
+    --iconColorWeak: @subtext0;
+    // issueActionColor
+    --issueActionColor: @green;
+    --issueActionColor-rgb: red(@green), green(@green), blue(@green);
+    // notificationColor
+    --notificationColorDefault: @red;
+    // nuui
+    --nuui-bg-marker-purple-default: fade(@mauve, 16%);
+    --nuui-text-marker-purple: @mauve;
+    // projectActionColor
+    --projectActionColor: @blue;
+    --projectActionColor-rgb: red(@blue), green(@blue), blue(@blue);
+    // pullRequestActionColor
+    --pullRequestActionColor: @mauve;
+    --pullRequestActionColor-rgb: red(@mauve), green(@mauve), blue(@mauve);
+    // red
+    --red: @red;
+    // starColor
+    --starColorGreen: @green;
+    --starColorLime: @green;
+    --starColorRed: @red;
+    --starColorYellow: @yellow;
+    // statusColor
+    --statusColor-1: @red;
+    --statusColor-1-rgb: red(@red), green(@red), blue(@red);
+    --statusColor-2: @blue;
+    --statusColor-2-rgb: red(@blue), green(@blue), blue(@blue);
+    --statusColor-3: @green;
+    --statusColor-3-rgb: red(@green), green(@green), blue(@green);
+    --statusColor-4: @overlay1;
+    --statusColor-4-rgb: red(@overlay1), green(@overlay1), blue(@overlay1);
+    --statusColor-5: @yellow;
+    --statusColor-5-rgb: red(@yellow), green(@yellow), blue(@yellow);
+    --statusColor-other: @mauve;
+    --statusColor-other-rgb: red(@mauve), green(@mauve), blue(@mauve);
+    // successColor
+    --successColorScaleAccent: @green;
+    --successColorScaleBase: fade(@green, 16%);
+    --successColorScaleText: @green;
+    // svnActionColor
+    --svnActionColor: @teal;
+    --svnActionColor-rgb: red(@teal), green(@teal), blue(@teal);
+    // textColor
+    --textColorDefault: @text;
+    --textColorInverse: @base;
+    --textColorPrimary: @text;
+    --textColorQuote: @subtext0;
+    --textColorTabOff: @subtext0;
+    --textColorWeak: @subtext0;
+    --textColorWeak-rgb: red(@subtext0), green(@subtext0), blue(@subtext0);
+    --textColorWeightAdjustment: @text;
+    // tooltipBaseColor
+    --tooltipBaseColor: @crust;
+    // warningColor
+    --warningColorScaleAccent: @yellow;
+    --warningColorScaleBase: fade(@yellow, 16%);
+    --warningColorScaleText: @yellow;
+    // wikiActionColor
+    --wikiActionColor: @pink;
+    --wikiActionColor-rgb: red(@pink), green(@pink), blue(@pink);
+  }
+}
