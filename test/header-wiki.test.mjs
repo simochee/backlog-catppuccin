@@ -2,7 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import postcss from 'postcss';
-import { compile, checkOverrides } from '../scripts/compile.mjs';
+import { selectorSpecificity, compare } from '@csstools/selector-specificity';
+import selectorParser from 'postcss-selector-parser';
+import { compile, checkOverrides, tokenOverrides, scopePattern } from '../scripts/compile.mjs';
 
 const source = await readFile(new URL('../catppuccin.user.less', import.meta.url), 'utf8');
 const library = `#lib() { .palette() {
@@ -15,36 +17,11 @@ const library = `#lib() { .palette() {
   @yellow: @accent; @pink: @accent; @flamingo: @accent;
 } }`;
 const scope = ':root:root:root:root:root';
-const pages = ['.Page--edit-wiki', '.Page--find-wiki', '.Page--view-wiki', '[class^=Page--wiki]'];
-const card = ' .card.-wiki-migration.is_not-yet';
-const expected = [];
-for (const mode of ['', '.dark-mode']) {
-  for (const body of ['', ' body']) {
-    const prefix = `${scope}${mode}${body} `;
-    for (const state of ['', ':is(:hover, :focus)']) {
-      expected.push([`${prefix}.global-nav .icon-button.add-item-link${state}`, 'background-color', '--defaultColorAccent', true]);
-    }
-    expected.push(
-      [`${prefix}.global-nav .icon-button.add-item-link svg.icon`, 'fill', '--backgroundColorSchemeBase', true],
-      [`${prefix}.upgrade-info__button`, 'color', '--defaultColorAccent', false],
-      [`${prefix}.upgrade-info__button`, 'border-color', '--defaultColorAccent', false],
-      [`${prefix}.upgrade-info:hover .upgrade-info__button`, 'background-color', '--defaultColorAccent', false],
-      [`${prefix}.upgrade-info:hover .upgrade-info__button`, 'color', '--backgroundColorSchemeBase', false],
-    );
-  }
-}
-for (const page of pages) {
-  const light = `${scope}:not(.dark-mode) ${page}${card}`;
-  const dark = `.dark-mode ${page}${card}`;
-  expected.push(
-    [`${dark} .wiki-migration-image svg path`, 'fill', '--backgroundColorSchemeBase', false],
-    [`${dark} .button`, 'border-color', '--backgroundColorSchemeBase', false],
-    [`${light} .wiki-migration-image svg path`, 'fill', '--warningColorScaleText', false],
-    [`${light} .button`, 'background-color', '--warningColorScaleAccent', false],
-    [`${light} .button`, 'border-color', '--warningColorScaleAccent', false],
-    [`${light} .button`, 'color', '--backgroundColorSchemeBase', false],
-  );
-}
+const flavoredScopes = ['', '.dark-mode'].flatMap((mode) =>
+  ['', ' body'].map((body) => `${scope}${mode}${body} `));
+const expected = tokenOverrides.flatMap(({ scope, selector, property, token, important }) =>
+  (scope.literal === undefined ? flavoredScopes : [scope.literal])
+    .map((prefix) => [`${prefix}${selector}`, property, token, important]));
 
 for (const flavor of ['latte', 'frappe', 'macchiato', 'mocha']) {
   test(`${flavor} header and migration overrides retain tokens, appearance scope and importance`, async () => {
@@ -74,10 +51,31 @@ test('each new allowlist entry enforces token, selector, property and importance
       rule(`${selector}, .unlisted`),
       rule(selector, 'stroke'),
       rule(selector, property, `var(${token})`, !important),
-      rule(selector.replace('is_not-yet', 'is_done').replace('upgrade-info', 'other-info').replace('add-item-link', 'other-link')),
+      rule(selector.replace('is_not-yet', 'is_unknown').replace('is_done', 'is_unknown').replace('upgrade-info', 'other-info').replace('add-item-link', 'other-link')),
     ]) {
       if (css.toString() === rule().toString()) continue;
       assert.throws(() => checkOverrides(css), /Unexpected color override/);
     }
+  }
+});
+
+test('scope patterns distinguish raw patterns from escaped literals', () => {
+  assert.equal(scopePattern({ pattern: 'raw.*' }), 'raw.*');
+  assert.equal(scopePattern({ literal: '.literal:not(.dark-mode) ' }), '\\.literal:not\\(\\.dark-mode\\) ');
+  for (const scope of [{}, { pattern: '', literal: '' }, { other: '' }]) {
+    assert.throws(() => scopePattern(scope), /Scope must be a pattern or literal/);
+  }
+});
+
+test('header interaction mix differs from rest and migration states outrank rest', async () => {
+  const css = postcss.parse((await compile('latte', source, library)).css);
+  const mixes = [];
+  css.walkDecls('--headerAddButtonHoverBG', (decl) => mixes.push(decl.value));
+  assert.equal(mixes.length, 4);
+  assert.ok(mixes.every((value) => value !== '#8833aa'));
+  const specificity = (selector) => selectorSpecificity(selectorParser().astSync(selector).first);
+  for (const { scope, selector } of tokenOverrides.filter(({ selector }) => / \.button:(hover|focus)/.test(selector))) {
+    const prefix = scope.literal;
+    assert.ok(compare(specificity(prefix + selector), specificity(prefix + selector.replace(/:(hover|focus-visible|focus)$/, ''))) > 0);
   }
 });

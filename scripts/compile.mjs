@@ -105,28 +105,51 @@ const flavoredScope = ':root(?::root){4}(?:\\.dark-mode)?(?: body)? ';
 const channel = '[+-]?(?:\\d*\\.)?\\d+%?';
 const color = `(?:#(?:[\\da-f]{3}|[\\da-f]{4}|[\\da-f]{6}|[\\da-f]{8})|(?:rgb|rgba|hsl|hsla)\\(\\s*${channel}(?:\\s*,\\s*|\\s+)${channel}(?:\\s*,\\s*|\\s+)${channel}(?:\\s*[,/]\\s*${channel})?\\s*\\))`;
 const escapeSelector = (selector) => selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-const tokenOverrides = [
-  ...['.global-nav .icon-button.add-item-link', '.global-nav .icon-button.add-item-link:is(:hover, :focus)']
-    .map((selector) => [flavoredScope, selector, 'background-color', '--defaultColorAccent', true]),
-  [flavoredScope, '.global-nav .icon-button.add-item-link svg.icon', 'fill', '--backgroundColorSchemeBase', true],
-  ...['color', 'border-color'].map((property) => [flavoredScope, '.upgrade-info__button', property, '--defaultColorAccent', false]),
-  [flavoredScope, '.upgrade-info:hover .upgrade-info__button', 'background-color', '--defaultColorAccent', false],
-  [flavoredScope, '.upgrade-info:hover .upgrade-info__button', 'color', '--backgroundColorSchemeBase', false],
-  ...['.Page--edit-wiki', '.Page--find-wiki', '.Page--view-wiki', '[class^=Page--wiki]'].flatMap((page) => {
-    const card = `${page} .card.-wiki-migration.is_not-yet`;
-    const light = ':root:root:root:root:root:not(.dark-mode) ';
-    return [
-      [escapeSelector('.dark-mode '), `${card} .wiki-migration-image svg path`, 'fill', '--backgroundColorSchemeBase', false],
-      [escapeSelector('.dark-mode '), `${card} .button`, 'border-color', '--backgroundColorSchemeBase', false],
-      [escapeSelector(light), `${card} .wiki-migration-image svg path`, 'fill', '--warningColorScaleText', false],
-      ...['background-color', 'border-color'].map((property) => [escapeSelector(light), `${card} .button`, property, '--warningColorScaleAccent', false]),
-      [escapeSelector(light), `${card} .button`, 'color', '--backgroundColorSchemeBase', false],
-    ];
-  }),
+const flavoredOverrideScope = { pattern: flavoredScope };
+const literalScope = (literal) => ({ literal });
+const override = (scope, selector, property, token, important = false) =>
+  ({ scope, selector, property, token, important });
+export const tokenOverrides = [
+  override(flavoredOverrideScope, '.global-nav .icon-button.add-item-link', 'background-color', '--defaultColorAccent', true),
+  override(flavoredOverrideScope, '.global-nav .icon-button.add-item-link:is(:hover, :focus)', 'background-color', '--headerAddButtonHoverBG', true),
+  override(flavoredOverrideScope, '.global-nav .icon-button.add-item-link svg.icon', 'fill', '--backgroundColorSchemeBase', true),
+  ...['color', 'border-color'].map((property) => override(flavoredOverrideScope, '.upgrade-info__button', property, '--defaultColorAccent')),
+  ...[':hover', ':focus-within'].flatMap((state) => [
+    override(flavoredOverrideScope, `.upgrade-info${state} .upgrade-info__button`, 'background-color', '--defaultColorAccent'),
+    override(flavoredOverrideScope, `.upgrade-info${state} .upgrade-info__button`, 'color', '--backgroundColorSchemeBase'),
+  ]),
+  ...['.Page--edit-wiki', '.Page--find-wiki', '.Page--view-wiki', '[class^=Page--wiki]'].flatMap((page) =>
+    [['is_not-yet', 'warning'], ['is_done', 'success']].flatMap(([state, scale]) => {
+      const card = `${page} .card.-wiki-migration.${state}`;
+      const light = literalScope(':root:root:root:root:root:not(.dark-mode) ');
+      const dark = literalScope(':root:root:root:root:root.dark-mode ');
+      const accent = `--${scale}ColorScaleAccent`;
+      return [
+        override(dark, `${card} a`, 'color', '--backgroundColorSchemeBase'),
+        override(dark, `${card} .button`, 'border-color', '--backgroundColorSchemeBase'),
+        override(light, card, 'border-color', accent),
+        ...(state === 'is_not-yet' ? [
+          override(dark, `${card} .wiki-migration-image svg path`, 'fill', '--backgroundColorSchemeBase'),
+          override(light, `${card} .wiki-migration-image svg path`, 'fill', `--${scale}ColorScaleText`),
+          ...['background-color', 'border-color'].map((property) => override(light, `${card} .button`, property, accent)),
+          override(light, `${card} .button`, 'color', '--backgroundColorSchemeBase'),
+          ...[':hover', ':focus', ':focus-visible'].flatMap((interaction) => [
+            override(light, `${card} .button${interaction}`, 'background-color', '--backgroundColorSchemeBase'),
+            ...['border-color', 'color', 'outline-color'].map((property) => override(light, `${card} .button${interaction}`, property, accent)),
+          ]),
+        ] : []),
+      ];
+    })),
 ];
+export const scopePattern = (scope) => {
+  if (Object.keys(scope).length !== 1) throw new Error('Scope must be a pattern or literal');
+  if (typeof scope.pattern === 'string') return scope.pattern;
+  if (typeof scope.literal === 'string') return escapeSelector(scope.literal);
+  throw new Error('Scope must be a pattern or literal');
+};
 const overrideAllowlist = [
-  ...tokenOverrides.map(([scope, selector, property, token, important]) => ({
-    selector: new RegExp(`^${scope}${escapeSelector(selector)}$`),
+  ...tokenOverrides.map(({ scope, selector, property, token, important }) => ({
+    selector: new RegExp(`^${scopePattern(scope)}${escapeSelector(selector)}$`),
     property,
     value: new RegExp(`^var\\(${token}\\)$`),
     important,
@@ -134,10 +157,10 @@ const overrideAllowlist = [
   { selector: /^\.dark-mode .+$/, property: 'color', value: /^var\(--backgroundColorSchemeBase\)$/ },
   { selector: /^\.dark-mode \.pill--square\.-subtasking$/, property: 'color', value: /^var\(--textColorWeak\)$/, important: false },
   { selector: /^:root:not\(\.dark-mode\) body\.Page--view-kanban \.card$/, property: 'background-color', value: /^var\(--backgroundColorSchemeBase\)$/ },
-  { selector: new RegExp(`^${flavoredScope}\\.upgrade-bar\\.generic-cta-bar$`), property: 'background-image', value: new RegExp(`^linear-gradient\\(45deg, ${color}, ${color}\\)$`, 'i') },
-  { selector: new RegExp(`^${flavoredScope}\\.na-choice-box\\.is_active$`), property: 'border-color', value: new RegExp(`^${color}$`, 'i') },
+  { selector: new RegExp(`^${flavoredScope}${escapeSelector('.upgrade-bar.generic-cta-bar')}$`), property: 'background-image', value: new RegExp(`^linear-gradient\\(45deg, ${color}, ${color}\\)$`, 'i') },
+  { selector: new RegExp(`^${flavoredScope}${escapeSelector('.na-choice-box.is_active')}$`), property: 'border-color', value: new RegExp(`^${color}$`, 'i') },
   ...[...sidebarProperties].flatMap(([selector, properties]) => properties.map((property) => ({
-    selector: new RegExp(`^${flavoredScope}${selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`),
+    selector: new RegExp(`^${flavoredScope}${escapeSelector(selector)}$`),
     property,
     value: new RegExp(`^${color}$`, 'i'),
   }))),
