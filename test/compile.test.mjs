@@ -7,7 +7,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { promisify } from 'node:util';
 import { execFile } from 'node:child_process';
 import postcss from 'postcss';
-import { compile, checkWeakTokens, checkErrorPageExclusion, errorPageScope, checkOverrides, checkNeutralOrder, parseColor, checkRGBCounterpart } from '../scripts/compile.mjs';
+import { compile, checkDisabledContrast, darkScope, rootTokenScope, checkErrorPageExclusion, errorPageScope, checkOverrides, checkNeutralOrder, parseColor, checkRGBCounterpart } from '../scripts/compile.mjs';
 import expectedOrder from './fixtures/neutral-order.json' with { type: 'json' };
 import { blockStart, blockEnd } from '../scripts/dark-text.mjs';
 
@@ -36,8 +36,9 @@ test('CLI checks execute from a path containing spaces and URL-encoded character
     .fixture() when (@flavor = latte) { ${assignments('latte')} }
     .fixture() when not (@flavor = latte) { ${assignments('mocha')} }
     .theme(@flavor) { .fixture(); }
-    ${errorPageScope} { .theme(@lightFlavor); }
-    ${errorPageScope}.dark-mode { .theme(@darkFlavor); }`);
+    ${rootTokenScope} { .theme(@lightFlavor); }
+    ${rootTokenScope}.dark-mode { .theme(@darkFlavor); }
+    ${darkScope} .button--primary.is_disabled, ${darkScope} .button--primary[disabled] { background-color: #333; }`);
   await writeFile(join(directory, 'mock-fetch.mjs'), `globalThis.fetch = async (url) => new Response(
     String(url).endsWith('.less') ? '/* fixture library */' :
     String(url).endsWith('.css') ? ':root { --backgroundColorBase: red; }' :
@@ -160,10 +161,10 @@ test('RGB checks name mismatched and missing counterparts', () => {
   }
 });
 
-const scope = ':root:not(:has(> body.Page--error)):root:root:root:root';
+const scope = ':root:root:root:root:root:where(:not(:has(> body.Page--error)))';
 for (const color of ['#abc', '#aabbcc', 'rgb(10, 20, 30)', 'rgba(10, 20, 30, 0.5)', 'hsl(120, 50%, 50%)', 'rgb(10 20 30 / 50%)', 'hsl(120 50% 50%)']) {
   test(`override allowlist accepts themed colors in ${color}`, () => {
-    for (const prefix of [scope, `${scope}.dark-mode`, `${scope} body:not(.Page--error)`]) {
+    for (const prefix of [scope, `${scope}.dark-mode`, `${scope} body`]) {
       assert.doesNotThrow(() => checkOverrides(postcss.parse(`
         ${prefix} .na-choice-box.is_active { border-color: ${color}; }
         ${prefix} .upgrade-bar.generic-cta-bar { background-image: linear-gradient(45deg, ${color}, ${color}); }
@@ -187,9 +188,9 @@ test('override allowlist rejects mismatched selectors, values and unlisted prope
 test('override allowlist preserves token overrides and custom assignments', () => {
   assert.doesNotThrow(() => checkOverrides(postcss.parse(`
     :root { --example: #abc; }
-    :root:not(:has(> body.Page--error)).dark-mode .example { color: var(--backgroundColorSchemeBase); }
-    :root:not(:has(> body.Page--error)).dark-mode .pill--square.-subtasking { color: var(--textColorWeak); }
-    :root:not(:has(> body.Page--error)):not(.dark-mode) body.Page--view-kanban .card { background-color: var(--backgroundColorSchemeBase); }
+    .dark-mode:where(:not(:has(> body.Page--error))) .example { color: var(--backgroundColorSchemeBase); }
+    .dark-mode:where(:not(:has(> body.Page--error))) .pill--square.-subtasking { color: var(--textColorWeak); }
+    :root:where(:not(:has(> body.Page--error))):not(.dark-mode) body.Page--view-kanban .card { background-color: var(--backgroundColorSchemeBase); }
   `)));
 });
 
@@ -200,17 +201,39 @@ test('error-page exclusion rejects any unguarded selector, including mixed lists
   assert.doesNotThrow(() => checkErrorPageExclusion(postcss.parse(`${errorPageScope}, ${errorPageScope}.dark-mode .pill {--example:red}`)));
 });
 
-test('weak tokens must both exist and differ even with equivalent color syntax', () => {
-  assert.doesNotThrow(() => checkWeakTokens(surfaces()));
-  for (const value of ['#aaa', '#aaaaaa', 'rgb(170, 170, 170)']) {
-    const values = surfaceValues();
-    values['--iconColorWeak'] = value;
-    assert.throws(() => checkWeakTokens(surfaces(values)), /Weak tokens must differ/);
+test('disabled contrast checks both states and reports flavor and measured ratio', () => {
+  const fixture = (label = '#aaa', background = '#333') => postcss.parse(`
+    ${rootTokenScope}.dark-mode { --textColorWeak: ${label}; }
+    ${darkScope} .button--primary.is_disabled { background-color: ${background}; }
+    ${darkScope} .button--primary[disabled] { background-color: ${background}; }
+  `);
+  for (const flavor of ['frappe', 'macchiato', 'mocha']) {
+    assert.match(checkDisabledContrast(fixture(), flavor), /PASS.*:1 >= 3:1/);
+    assert.throws(() => checkDisabledContrast(fixture('#333'), flavor), new RegExp(`${flavor}.*1.00:1 < 3:1`));
+    assert.throws(() => checkDisabledContrast(postcss.parse(':root {}'), flavor), /missing disabled primary/);
+    const css = fixture();
+    css.last.first.value = '#aaa';
+    assert.throws(() => checkDisabledContrast(css, flavor), /1.00:1 < 3:1/);
+    css.last.remove();
+    assert.throws(() => checkDisabledContrast(css, flavor), /missing disabled primary/);
   }
-  for (const token of ['--iconColorWeak', '--textColorWeak']) {
-    const values = surfaceValues();
-    delete values[token];
-    assert.throws(() => checkWeakTokens(surfaces(values)), (error) => error.message.includes(token));
-  }
-  assert.throws(() => checkWeakTokens(postcss.parse(':root {}')), /Missing weak token/);
+  assert.equal(checkDisabledContrast(fixture('#333'), 'latte'), undefined);
+});
+
+test('error-page guard must be complete and belong to the leading root or dark compound', () => {
+  for (const selector of [
+    ':root:where(:not(:has(body.Page--error)))',
+    ':root:where(:not(:has(> svg|body.Page--error)))',
+    ':root:where(:not(:has(> body.Page--error, .other)))',
+    ':root:where(:not(:has(> body.Page--error)), .other)',
+    ':root:where(:not(:has(> body.Page--error))):is(.a, .b), .missing',
+    '.outer :root:where(:not(:has(> body.Page--error)))',
+    ':root:is(:where(:not(:has(> body.Page--error))))',
+    '.other:where(:not(:has(> body.Page--error)))',
+  ]) assert.throws(() => checkErrorPageExclusion(postcss.parse(`${selector} {color:red}`)), /Missing error-page guard/);
+  assert.doesNotThrow(() => checkErrorPageExclusion(postcss.parse(`
+    ${darkScope} .item:is(.a, .b), ${rootTokenScope} body {color:red}
+    @keyframes pulse {from {opacity:0} to {opacity:1}}
+    @-webkit-keyframes pulse {50% {opacity:0}}
+  `)));
 });

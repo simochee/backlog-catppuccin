@@ -102,8 +102,8 @@ test('ranks only classes directly in the subject compound using code-unit order'
 
 test('guarded overrides still cover non-error component literals', () => {
   const report = findLiterals([{ url: 'https://assets.backlog.com/test.css', css: '.dark-mode .pill {color:red} .choice {border-color:red}' }], `
-    :root:not(:has(> body.Page--error)).dark-mode .pill {color:var(--backgroundColorSchemeBase)}
-    :root:not(:has(> body.Page--error)):root:root:root:root .choice {border-color:var(--defaultColorAccent)}
+    .dark-mode:where(:not(:has(> body.Page--error))) .pill {color:var(--backgroundColorSchemeBase)}
+    :root:root:root:root:root:where(:not(:has(> body.Page--error))) .choice {border-color:var(--defaultColorAccent)}
   `);
   assert.deepEqual(report, []);
 });
