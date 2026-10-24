@@ -7,7 +7,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { promisify } from 'node:util';
 import { execFile } from 'node:child_process';
 import postcss from 'postcss';
-import { compile, checkNeutralOrder, parseColor, checkRGBCounterpart } from '../scripts/compile.mjs';
+import { compile, checkOverrides, checkNeutralOrder, parseColor, checkRGBCounterpart } from '../scripts/compile.mjs';
 import expectedOrder from './fixtures/neutral-order.json' with { type: 'json' };
 import { blockStart, blockEnd } from '../scripts/dark-text.mjs';
 
@@ -151,4 +151,37 @@ test('RGB checks name mismatched and missing counterparts', () => {
   for (const declarations of ['--example: #abc; --example-rgb: 0, 0, 0;', '--example-rgb: 0, 0, 0;']) {
     assert.throws(() => postcss.parse(`:root { ${declarations} }`).walkDecls(checkRGBCounterpart), /--example/);
   }
+});
+
+const scope = ':root:root:root:root:root';
+for (const color of ['#abc', '#aabbcc', 'rgb(10, 20, 30)', 'rgba(10, 20, 30, 0.5)', 'hsl(120, 50%, 50%)', 'rgb(10 20 30 / 50%)', 'hsl(120 50% 50%)']) {
+  test(`override allowlist accepts themed colors in ${color}`, () => {
+    for (const prefix of [scope, `${scope}.dark-mode`, `${scope} body`]) {
+      assert.doesNotThrow(() => checkOverrides(postcss.parse(`
+        ${prefix} .na-choice-box.is_active { border-color: ${color}; }
+        ${prefix} .upgrade-bar.generic-cta-bar { background-image: linear-gradient(45deg, ${color}, ${color}); }
+      `)));
+    }
+  });
+}
+
+test('override allowlist rejects mismatched selectors, values and unlisted properties', () => {
+  for (const css of [
+    `${scope} .other { border-color: #abc; }`,
+    `${scope} .na-choice-box.is_active, .other { border-color: #abc; }`,
+    '.na-choice-box.is_active { border-color: #abc; }',
+    `${scope} .na-choice-box.is_active { border-color: var(--unexpected); }`,
+    `${scope} .upgrade-bar.generic-cta-bar { background-image: linear-gradient(90deg, #abc, #def); }`,
+    `${scope} .na-choice-box.is_active { color: #abc; }`,
+    '.dark-mode .pill--square.-subtasking { color: var(--textColorWeak) !important; }',
+  ]) assert.throws(() => checkOverrides(postcss.parse(css)), /Unexpected color override/);
+});
+
+test('override allowlist preserves token overrides and custom assignments', () => {
+  assert.doesNotThrow(() => checkOverrides(postcss.parse(`
+    :root { --example: #abc; }
+    .dark-mode .example { color: var(--backgroundColorSchemeBase); }
+    .dark-mode .pill--square.-subtasking { color: var(--textColorWeak); }
+    :root:not(.dark-mode) body.Page--view-kanban .card { background-color: var(--backgroundColorSchemeBase); }
+  `)));
 });
