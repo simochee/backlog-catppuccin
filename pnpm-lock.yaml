@@ -4,6 +4,12 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+catalogs:
+  default:
+    vite-plus:
+      specifier: 1.4.0
+      version: 1.4.0
+
 importers:
 
   .:
@@ -12,7 +18,7 @@ importers:
         specifier: 24.19.2
         version: 24.19.2
       vite-plus:
-        specifier: 1.4.0
+        specifier: 'catalog:'
         version: 1.4.0(@types/node@24.19.2)(@vitest/ui@5.0.5(vitest@5.0.5))(less@4.6.7)
 
   packages/userstyle:
@@ -36,7 +42,7 @@ importers:
         specifier: 4.2.0
         version: 4.2.0
       vite-plus:
-        specifier: 1.4.0
+        specifier: 'catalog:'
         version: 1.4.0(@types/node@24.19.2)(@vitest/ui@5.0.5(vitest@5.0.5))(less@4.6.7)
 
 packages:

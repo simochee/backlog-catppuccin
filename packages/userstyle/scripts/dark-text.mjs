@@ -6,7 +6,7 @@ import { selectorSpecificity, compare } from '@csstools/selector-specificity';
 import { legacyDarkScope, newDesignMarker } from './guards.mjs';
 import { loadStylesheets } from './source.mjs';
 
-export const blockStart = '    // BEGIN GENERATED DARK TEXT (npm run generate:dark-text)';
+export const blockStart = '    // BEGIN GENERATED DARK TEXT (vp run generate:dark-text)';
 export const blockEnd = '    // END GENERATED DARK TEXT';
 const baseColor = /^var\(\s*--backgroundColorSchemeBase\s*\)$/;
 const primaryColor = /^var\(\s*--textColorPrimary\s*\)$/;
@@ -237,7 +237,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     const updated = replaceDarkText(source, renderDarkText(result));
     if (check && source !== updated)
       throw new Error(
-        'Dark-text block is out of date; run npm run generate:dark-text with the same extra URLs',
+        'Dark-text block is out of date; run vp run generate:dark-text with the same extra URLs',
       );
     if (!check) await writeFile(file, updated);
     console.log(check ? 'Dark-text block: up to date' : 'Dark-text block: generated');

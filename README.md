@@ -51,14 +51,11 @@ generation and literal reports always run afresh.
 Oxfmt excludes the published LESS source and the hash-pinned library fixture to
 preserve their bytes. Type checks cover the TypeScript toolchain configuration;
 the existing JavaScript validators retain their runtime regression coverage.
-The sort lint rule permits default string ordering to preserve generated selector
-order. The discovery script retains its Set snapshot while adding bundle URLs,
-so `unicorn/no-useless-spread` is disabled only for that file.
 
 Extract color-variable **names**, one per line:
 
 ```sh
-vp run extract
+node packages/userstyle/scripts/extract.mjs
 ```
 
 Check live color-variable coverage and image/color type parity (exits nonzero
@@ -80,8 +77,7 @@ because neither flavor ink reaches 3:1 on green. This check uses the pinned Catp
 vp run check:less
 ```
 
-Run the regression tests (134 tests; Node previously counted the helper module as a
-135th test without assertions):
+Run the regression tests:
 
 ```sh
 vp test

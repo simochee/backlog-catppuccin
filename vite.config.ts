@@ -12,10 +12,12 @@ export default defineConfig({
     options: { typeAware: true, typeCheck: true },
     overrides: [
       {
+        // Discovery adds bundle URLs while iterating, so it must loop over a snapshot of the Set.
         files: ['packages/userstyle/scripts/source.mjs'],
         rules: { 'unicorn/no-useless-spread': 'off' },
       },
       {
+        // Default string ordering is the generated selector order; a comparator would reorder committed output.
         files: ['packages/userstyle/scripts/{source,coverage,dark-text}.mjs'],
         rules: { 'typescript/require-array-sort-compare': 'off' },
       },
@@ -33,7 +35,9 @@ export default defineConfig({
         cache: {
           input: [
             'catppuccin.user.less',
-            'packages/userstyle/**',
+            'packages/userstyle/package.json',
+            'packages/userstyle/scripts/**',
+            'packages/userstyle/test/fixtures/**',
             'pnpm-lock.yaml',
             'package.json',
             'vite.config.ts',
