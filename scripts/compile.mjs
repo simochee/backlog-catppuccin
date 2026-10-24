@@ -3,13 +3,14 @@ import { readFile } from 'node:fs/promises';
 import less from 'less';
 import postcss from 'postcss';
 import selectorParser from 'postcss-selector-parser';
-import { loadPinnedLibrary, checkPalette } from './palette.mjs';
+import { loadPinnedLibrary, loadPalettes, checkPalette } from './palette.mjs';
 import { discoveredColorNames } from './source.mjs';
 import nuTokenTypes from '../test/fixtures/nu-token-types.json' with { type: 'json' };
 import { paletteAllowlist } from './style-policy.mjs';
 import { escapeSelector, errorPageGuard, legacyGuard, newDesignGuard, legacyScope, legacyDarkScope, sharedTokenScope, legacyOverrideScope, newDesignTokenScope } from './guards.mjs';
 import expectedOrder from '../test/fixtures/neutral-order.json' with { type: 'json' };
 
+const palettes = await loadPalettes();
 export const libraryURL = 'https://userstyles.catppuccin.com/lib/std/v1.less';
 const isRGB = (name) => /-rgb$/.test(name) || name === '--rgb-accent';
 const sidebarProperties = new Map([
@@ -155,19 +156,57 @@ export const scopePattern = (scope) => {
 };
 export const sharedVisualProperties = new Map([
   ['::selection', ['background-color']],
-  ...['.button--default', '.card--default', '.global-header'].map((selector) => [selector, ['background-color']]),
-  ...['input', 'textarea'].map((selector) => [selector, ['caret-color', 'background-color']]),
+  ...['input', 'textarea'].map((selector) => [selector, ['caret-color']]),
   ...['[contenteditable]', '.CodeMirror', '.ace_editor'].map((selector) => [selector, ['caret-color']]),
   ...['.prettyprint', '.prettyprint.prettyprinted', '.loom code.prettyprint'].map((selector) => [selector, ['color', 'background-color', 'border-color']]),
   ...['kwd', 'str', 'atv', 'typ', 'atn', 'com', 'pun', 'opn', 'clo', 'pln', 'lit', 'tag', 'dec', 'var', 'fun'].map((name) => [`.prettyprint .${name}`, ['color']]),
   ['.prettyprint .linenums', ['color']],
   ['.prettyprint .linenums li:nth-child(even)', ['background-color']],
   ...['.Code-table .Code-table_content_separator', '.Code-table .Code-table_content_separator td', '.Code-split-table .Line-src.separator'].map((selector) => [selector, ['color', 'background-color']]),
-  ['.code-view__header', ['color']],
+  ['.code-view__header', ['color', 'background-color']],
   ['.Code-table .Line-number span', ['color']],
   ...['.pill--default', '.pill-inline-list__item-link', '.tab-buttons__pill', '.wiki-tag-list__count', '.filter-nav.-wiki-tag .filter-nav__link', '.pill--default:hover', '.pill-inline-list__item-link:hover', '.filter-nav.-wiki-tag .filter-nav__link:is(:hover, :focus, .is_active)'].map((selector) => [selector, ['background-color', 'color']]),
   ['.filter-nav.-wiki-tag .filter-nav__link .filter-nav__num', ['color']],
 ]);
+export function checkSharedAllowlist(css) {
+  const found = new Set();
+  css.walkDecls((decl) => {
+    for (const mode of ['', '.dark-mode']) for (const selector of postcss.list.comma(decl.parent.selector)) {
+      if (selector.startsWith(`${sharedTokenScope}${mode} `)) found.add(`${selector}|${decl.prop}`);
+    }
+  });
+  for (const [selector, properties] of sharedVisualProperties) for (const property of properties) {
+    for (const mode of ['', '.dark-mode']) {
+      if (!found.has(`${sharedTokenScope}${mode} ${selector}|${property}`)) throw new Error(`Unused shared allowlist entry: ${selector} / ${property} / ${mode || 'light'}`);
+    }
+  }
+  return 'shared allowlist entries all match compiled declarations';
+}
+
+export function checkSharedContrast(css, modes) {
+  const values = new Map();
+  css.walkDecls((decl) => {
+    for (const selector of postcss.list.comma(decl.parent.selector)) values.set(`${selector}|${decl.prop}`, decl.value);
+  });
+  const ratios = [];
+  for (const [mode, flavor] of Object.entries(modes)) {
+    const root = sharedTokenScope + (mode === 'dark' ? '.dark-mode' : '');
+    const color = (selector, property = 'color') => values.get(`${root} ${selector}|${property}`);
+    const pairs = [
+      ['separator', color('.Code-table .Code-table_content_separator'), color('.Code-table .Code-table_content_separator', 'background-color')],
+      ['header', color('.code-view__header'), color('.code-view__header', 'background-color')],
+      ['line numbers odd', color('.prettyprint .linenums'), color('.prettyprint', 'background-color')],
+      ['line numbers even', color('.prettyprint .linenums'), color('.prettyprint .linenums li:nth-child(even)', 'background-color')],
+    ];
+    for (const [name, foreground, background] of pairs) {
+      const ratio = contrastRatio(foreground, background, palettes[flavor].base);
+      if (ratio < 3) throw new Error(`${flavor} ${name} contrast: ${ratio.toFixed(3)}:1 < 3:1`);
+      ratios.push(`${mode}/${flavor} ${name}=${ratio.toFixed(3)}:1`);
+    }
+  }
+  return ratios.join('; ');
+}
+
 const sharedVisualSelector = (selector) => ['', '.dark-mode'].some((mode) =>
   [...sharedVisualProperties.keys()].some((suffix) => selector === `${sharedTokenScope}${mode} ${suffix}`));
 const overrideAllowlist = [
@@ -224,7 +263,7 @@ const tokenSelector = new RegExp(`^${escapeSelector(sharedTokenScope)}(?:\\.dark
 const guardShapes = new Map([errorPageGuard, legacyGuard, newDesignGuard].map((guard) => [guard, guardShape(guard)]));
 const keyframesPattern = /^(?:-\w+-)?keyframes$/i;
 
-export function checkErrorPageExclusion(css, addon = false) {
+export function checkErrorPageExclusion(css, newDesignOnly = false) {
   css.walkRules((rule) => {
     for (let parent = rule.parent; parent; parent = parent.parent) {
       if (parent.type === 'atrule' && keyframesPattern.test(parent.name)) return;
@@ -237,7 +276,7 @@ export function checkErrorPageExclusion(css, addon = false) {
         (node.type === 'pseudo' && node.value === ':root') || (node.type === 'class' && node.value === 'dark-mode'));
       const rootTokens = tokenSelector.test(selector.toString().trim()) && rule.nodes.every((node) =>
         node.type === 'comment' || (node.type === 'decl' && node.prop.startsWith('--')));
-      const expected = addon || compound.some((node) => JSON.stringify(nodeShape(node)) === guardShapes.get(newDesignGuard)) ? newDesignGuard : rootTokens || sharedVisualSelector(selector.toString().trim()) ? errorPageGuard : legacyGuard;
+      const expected = newDesignOnly || compound.some((node) => JSON.stringify(nodeShape(node)) === guardShapes.get(newDesignGuard)) ? newDesignGuard : rootTokens || sharedVisualSelector(selector.toString().trim()) ? errorPageGuard : legacyGuard;
       if (!anchored || !compound.some((node) => JSON.stringify(nodeShape(node)) === guardShapes.get(expected))) {
         throw new Error(`Missing error-page guard or design guard: ${selector}`);
       }
@@ -268,7 +307,7 @@ export function checkDisabledContrast(css, flavor) {
   });
   if (!labels.length || backgrounds.size !== 2) throw new Error(`${flavor} missing disabled primary label/background`);
   const ratios = labels.flatMap((label) => [...backgrounds.values()].map((background) => {
-    return contrastRatio(label, background);
+    return contrastRatio(label, background, palettes[flavor].base);
   }));
   const ratio = Math.min(...ratios);
   if (ratio < 3) throw new Error(`${flavor} disabled primary contrast: ${ratio.toFixed(2)}:1 < 3:1`);
@@ -280,7 +319,8 @@ export function compositeColor(value, backdrop) {
   const alpha = value.match(/^rgba\([^,]+,[^,]+,[^,]+,\s*([\d.]+)\)$/i)?.[1];
   return alpha === undefined ? rgb : rgb.map((channel, index) => channel * Number(alpha) + backdrop[index] * (1 - Number(alpha)));
 }
-export function contrastRatio(a, b, backdrop = '#eff1f5') {
+export function contrastRatio(a, b, backdrop) {
+  if (!backdrop) throw new Error('Contrast requires an explicit backdrop');
   const background = compositeColor(b, parseColor(backdrop, 'backdrop'));
   const left = luminance(compositeColor(a, background));
   const right = luminance(background);
@@ -305,7 +345,7 @@ export function checkTooltipContrast(css, flavor, reportException = console.log,
       if (!values.has('--tooltip-text-color') || !values.has('--tooltip-base-color')) throw new Error(`${label}: missing tooltip foreground or base color`);
       const foreground = values.get('--tooltip-text-color');
       const background = values.get('--tooltip-base-color');
-      const ratio = contrastRatio(foreground, background);
+      const ratio = contrastRatio(foreground, background, palettes[actualFlavor].base);
       const floor = actualFlavor === 'latte' && variant === 'success' ? 2.5 : 3;
       if (ratio < floor) throw new Error(`${label} contrast: ${ratio.toFixed(3)}:1 < ${floor}:1`);
       if (ratio < 3) exceptions.add(`${flavor} contrast exception: tooltip ${variant}: ${foreground} / ${background}: ${ratio.toFixed(3)}:1 >= 2.5:1`);
@@ -339,7 +379,7 @@ export function nuContrastPairs() {
       [`${content}-on-ghost`, 'bg-ghost-active'], [`${content}-on-ghost`, 'bg-ghost-pressed'], [`${content}-default`, 'bg-default'],
       [`${content}-inverted`, 'bg-inverted']);
     for (const role of ['danger', 'warning', 'success', 'info']) {
-      pairs.push([`${content}-${role}`, `bg-${role}-banner`], [`${content}-${role}`, `bg-${role}-subtle`]);
+      for (const state of ['banner', 'subtle', 'highlight']) pairs.push([`${content}-${role}`, `bg-${role}-${state}`]);
     }
   }
   return pairs;
@@ -393,6 +433,12 @@ export const nuDistinctSurfaces = [
   ...['bg-floating', 'bg-subtle'].map((surface) => ['bg-disabled', surface]),
   ['bg-ghost-active', 'bg-ghost-pressed'], ['bg-ghost-hover', 'bg-disabled'],
   ['bg-ghost-active', 'bg-disabled'], ['bg-ghost-pressed', 'bg-disabled'],
+  ...['danger', 'info', 'success', 'warning', ...markerNames.map((name) => `marker-${name}`)].flatMap((role) => [
+    [`bg-${role}-subtle`, `bg-${role}-default`],
+    [`bg-${role}-default`, `bg-${role}-highlight`],
+    [`bg-${role}-subtle`, `bg-${role}-highlight`],
+  ]),
+  ...markerNames.map((name) => [`border-marker-${name}-subtle`, `border-marker-${name}-default`]),
 ];
 
 export function checkNuStyle(css, flavor, reportException = console.log, accentOnly = false, modeFlavors) {
@@ -413,7 +459,7 @@ export function checkNuStyle(css, flavor, reportException = console.log, accentO
     }));
     const actualFlavor = modeFlavors?.[rule.selector.includes('.dark-mode') ? 'dark' : 'light'] || flavor.split('/')[0];
     for (const [foreground, background] of accentOnly ? accentNuContrastPairs : allNuContrastPairs) {
-      const ratio = contrastRatio(values.get(foreground), values.get(background), values.get('bg-default'));
+      const ratio = contrastRatio(values.get(foreground), values.get(background), palettes[actualFlavor].base);
       minimum = Math.min(minimum, ratio);
       const floor = nuContrastFloor(actualFlavor, foreground, background);
       if (ratio < floor) throw new Error(`${flavor} new design contrast: ${foreground} / ${background}: ${ratio.toFixed(2)}:1 < ${floor}:1`);
@@ -427,8 +473,9 @@ export function checkNuStyle(css, flavor, reportException = console.log, accentO
       if (before > after) throw new Error(`${flavor} new design neutral order: ${order[index - 1]} / ${order[index]}`);
     }
     for (const [left, right] of nuDistinctSurfaces) {
-      const a = parseColor(values.get(left), left);
-      const b = parseColor(values.get(right), right);
+      const backdrop = parseColor(palettes[actualFlavor].base, 'base');
+      const a = compositeColor(values.get(left), backdrop);
+      const b = compositeColor(values.get(right), backdrop);
       if (a.every((channel, index) => channel === b[index])) throw new Error(`New design surfaces must differ: ${left} / ${right}`);
     }
     rules++;
@@ -450,6 +497,10 @@ export function checkDerivedSource(source) {
   }
   for (const match of clean.matchAll(/\b(?:darken|lighten)\([^,]+,\s*([\d.]+)%/g)) {
     if (Number(match[1]) > 20) throw new Error(`Ink correction exceeds 20%: ${match[0]}`);
+  }
+  for (const match of clean.matchAll(/(?:@amount\s*:\s*([^;]+);|#ink\([^;{}]+;\s*([\d.]+)%)/g)) {
+    const amounts = match[2] ? [Number(match[2])] : [...match[1].matchAll(/([\d.]+)%/g)].map((entry) => Number(entry[1]));
+    if (!amounts.length || amounts.some((amount) => amount > 20)) throw new Error(`Computed ink correction exceeds 20% or is unverifiable: ${match[0]}`);
   }
   for (const match of clean.matchAll(/#state\([^;]+;\s*([\d.]+)%/g)) {
     if (Number(match[1]) > 10) throw new Error(`Interaction correction exceeds 10%: ${match[0]}`);
@@ -476,38 +527,33 @@ export async function validateStyles({ sources, library, report = console.log, r
       const modes = { light, dark };
       const label = `${light === dark ? light : `${light}+${dark}`}/${accent}`;
       for (const [file, source] of Object.entries(sources)) {
-        const addon = false;
         await checked(`${file} ${label} compile`, async () => {
           const css = postcss.parse((await render(light, source, library, dark, accent)).css);
           const scope = `${file} ${label}`;
-          await checked(`${scope} guards`, () => checkErrorPageExclusion(css, addon));
+          await checked(`${scope} guards`, () => checkErrorPageExclusion(css));
           const nuCSS = css.clone();
           nuCSS.walkRules((rule) => { if (!rule.selector.startsWith(newDesignTokenScope)) rule.remove(); });
-          if (nuCSS.nodes.length) {
-            const css = nuCSS;
-            await checked(`${scope} type parity`, () => checkNuTokenTypes(css, nuTokenTypes));
-            await checked(`${scope} surfaces/contrast`, () => checkNuStyle(css, label, report, false, modes));
-            if (css.toString().includes('--tooltip-text-color:')) await checked(`${scope} tooltips`, () => checkTooltipContrast(css, label, report, modes));
-            await checked(`${scope} ink deviations`, () => checkOnAccentInk(css, modes, report, label));
-          }
-          {
-            await checked(`${scope} overrides`, () => checkOverrides(css));
-            await checked(`${scope} RGB`, () => css.walkDecls(/^--/, checkRGBCounterpart) && undefined);
-            await checked(`${scope} tooltips`, () => checkTooltipContrast(css, label, report, modes));
-            await checked(`${scope} disabled`, () => checkDisabledContrast(css, dark));
-            await checked(`${scope} primary contrast`, () => checkMainContrast(css, modes, report, label));
-            for (const [mode, flavor] of Object.entries(modes)) {
-              const subset = css.clone();
-              subset.walkRules((rule) => { if (rule.selector.includes('.dark-mode') !== (mode === 'dark')) rule.remove(); });
-              await checked(`${scope} ${mode} surfaces`, () => checkNeutralOrder(subset, flavor));
-            }
+          await checked(`${scope} type parity`, () => checkNuTokenTypes(nuCSS, nuTokenTypes));
+          await checked(`${scope} surfaces/contrast`, () => checkNuStyle(nuCSS, label, report, false, modes));
+          await checked(`${scope} ink deviations`, () => checkOnAccentInk(nuCSS, modes, report, label));
+          await checked(`${scope} overrides`, () => checkOverrides(css));
+          await checked(`${scope} shared allowlist`, () => checkSharedAllowlist(css));
+          await checked(`${scope} chrome/line numbers`, () => checkSharedContrast(css, modes));
+          await checked(`${scope} RGB`, () => css.walkDecls(/^--/, checkRGBCounterpart) && undefined);
+          await checked(`${scope} tooltips`, () => checkTooltipContrast(css, label, report, modes));
+          await checked(`${scope} disabled`, () => checkDisabledContrast(css, dark));
+          await checked(`${scope} primary contrast`, () => checkMainContrast(css, modes, report, label));
+          for (const [mode, flavor] of Object.entries(modes)) {
+            const subset = css.clone();
+            subset.walkRules((rule) => { if (rule.selector.includes('.dark-mode') !== (mode === 'dark')) rule.remove(); });
+            await checked(`${scope} ${mode} surfaces`, () => checkNeutralOrder(subset, flavor));
           }
           for (const [mode, flavor] of Object.entries(modes)) {
             const subset = css.clone();
             subset.walkRules((rule) => { if (rule.selector.includes('.dark-mode') !== (mode === 'dark')) rule.remove(); });
             await checked(`${scope} ${mode} ΔE`, () => checkPalette(subset, flavor, { allowlist: paletteAllowlist }));
           }
-          if (accent === 'mauve' && light === dark) report(`${light}${addon ? ' new design' : ''}: PASS`);
+          if (accent === 'mauve' && light === dark) report(`${light}: PASS`);
         });
       }
     }
@@ -523,10 +569,10 @@ export function checkMainContrast(css, modes, report = console.log, label = '') 
     if (!values.has('--onAccentText')) return;
     const flavor = modes[rule.selector.includes('.dark-mode') ? 'dark' : 'light'];
     const ink = values.get('--onAccentText');
-    const base = values.get('--backgroundColorSchemeBase');
+    const base = palettes[flavor].base;
     for (const token of ['--defaultColorAccent', '--headerAddButtonHoverBG']) {
       const background = values.get(token);
-      const ratio = contrastRatio(ink, background);
+      const ratio = contrastRatio(ink, background, palettes[flavor].base);
       const floor = flavor === 'latte' ? 2.5 : 3;
       if (ratio < floor) throw new Error(`${label} main ${token}: ${ratio.toFixed(3)}:1 < ${floor}:1`);
       if (ratio < 3) report(`${label} contrast exception: main ${token}: ${ratio.toFixed(3)}:1 >= 2.5:1 [${rule.selector}]`);
@@ -550,8 +596,8 @@ export function checkOnAccentInk(css, modes, report = console.log, label = '') {
       const base = values.get('bg-default');
       if (ink === base) continue;
       const background = values.get(`bg-${role}-default`);
-      if (contrastRatio(base, background) >= 3) throw new Error(`${flavor} ${role}: base ink already meets 3:1`);
-      report(`${label} on-accent ink deviation: ${role}: base ${base} / ${background} below 3:1; using ${ink} (${contrastRatio(ink, background).toFixed(3)}:1) [${rule.selector}]`);
+      if (contrastRatio(base, background, palettes[flavor].base) >= 3) throw new Error(`${flavor} ${role}: base ink already meets 3:1`);
+      report(`${label} on-accent ink deviation: ${role}: base ${base} / ${background} below 3:1; using ${ink} (${contrastRatio(ink, background, palettes[flavor].base).toFixed(3)}:1) [${rule.selector}]`);
       deviations++;
     }
   });

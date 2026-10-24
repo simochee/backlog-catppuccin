@@ -5,7 +5,7 @@ import postcss from 'postcss';
 import selectorParser from 'postcss-selector-parser';
 import { selectorSpecificity, compare } from '@csstools/selector-specificity';
 import { errorPageGuard, legacyGuard, newDesignGuard, sharedTokenScope, legacyOverrideScope, newDesignTokenScope } from '../scripts/guards.mjs';
-import { checkErrorPageExclusion, checkNuStyle, nuContrastPairs, nuDistinctSurfaces, checkTooltipContrast } from '../scripts/compile.mjs';
+import { checkErrorPageExclusion, checkNuStyle, nuContrastPairs, nuDistinctSurfaces, checkTooltipContrast, markerNames } from '../scripts/compile.mjs';
 import { coverageSets, missingAssignments, discoverCoverage } from '../scripts/coverage.mjs';
 import { inspectCSS } from '../scripts/source.mjs';
 import { findLiterals } from '../scripts/literals.mjs';
@@ -17,6 +17,10 @@ test('userstyle has one header, control set and document scope', () => {
   assert.equal((source.match(/==UserStyle==/g) || []).length, 1);
   assert.equal((source.match(/^@var /gm) || []).length, 3);
   assert.equal((source.match(/^@-moz-document /gm) || []).length, 1);
+  const assigned = [...source.slice(source.lastIndexOf('#nuui(@flavor) {')).matchAll(/(--[\w-]+):/g)].map((match) => match[1]);
+  assert.ok(assigned.length > 200);
+  assert.ok(assigned.every((name) => name.startsWith('--nuui-')));
+  assert.equal(new Set(assigned).size, assigned.length);
 });
 
 test('coverage keeps new design colors and composites separate from legacy and non-color tokens', () => {
@@ -63,6 +67,14 @@ function validNu() {
   entries.set('bg-subtle', '#fff');
   entries.set('bg-row-header', '#fff');
   entries.set('bg-disabled', '#ddd');
+  for (const role of ['danger', 'info', 'success', 'warning', ...markerNames.map((name) => `marker-${name}`)]) {
+    entries.set(`bg-${role}-subtle`, '#eee');
+    entries.set(`bg-${role}-highlight`, '#ddd');
+  }
+  for (const name of markerNames) {
+    entries.set(`border-marker-${name}-subtle`, '#888');
+    entries.set(`border-marker-${name}-default`, '#aaa');
+  }
   const declarations = [...entries].map(([name, value]) => `--nuui-${name}:${value}`).join(';');
   return postcss.parse(['', ' body', '.dark-mode', '.dark-mode body'].map((mode) => `${newDesignTokenScope}${mode} {${declarations}}`).join('\n'));
 }

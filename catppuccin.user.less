@@ -20,6 +20,9 @@
 @newDesignMarker: ~':has(> head > link[href*="/styles_nu-ui/"])';
 
 @-moz-document regexp("https?://([a-zA-Z0-9-]+\\.)+backlog\\.(com|jp)(:[0-9]+)?/.*"), regexp("https?://([a-zA-Z0-9-]+\\.)+backlogtool\\.com(:[0-9]+)?/.*") {
+    #ink(@color; @amount) {
+      @result: if((@flavor = latte), darken(@color, @amount), @color);
+    }
     #ratio(@a; @b) {
       @result: ((max(luma(@a), luma(@b)) + 5%) / (min(luma(@a), luma(@b)) + 5%));
     }
@@ -210,28 +213,31 @@
         border-color: @overlay0;
       }
       .prettyprint .kwd { color: @mauve; }
-      .prettyprint .str { color: if((@flavor = latte), darken(@green, 6.6%), @green); }
-      .prettyprint .atv { color: if((@flavor = latte), darken(@green, 6.6%), @green); }
-      .prettyprint .typ { color: if((@flavor = latte), darken(@yellow, 13.4%), @yellow); }
-      .prettyprint .atn { color: if((@flavor = latte), darken(@yellow, 13.4%), @yellow); }
+      .prettyprint .str { color: #ink(@green; 6.6%)[@result]; }
+      .prettyprint .atv { color: #ink(@green; 6.6%)[@result]; }
+      .prettyprint .typ { color: #ink(@yellow; 13.4%)[@result]; }
+      .prettyprint .atn { color: #ink(@yellow; 13.4%)[@result]; }
       .prettyprint .com { color: @overlay2; }
       .prettyprint .pun { color: @overlay2; }
       .prettyprint .opn { color: @overlay2; }
       .prettyprint .clo { color: @overlay2; }
       .prettyprint .pln { color: @text; }
-      .prettyprint .lit { color: if((@flavor = latte), darken(@peach, 12.1%), @peach); }
+      .prettyprint .lit { color: #ink(@peach; 12.1%)[@result]; }
       .prettyprint .tag { color: @mauve; }
-      .prettyprint .dec { color: if((@flavor = latte), darken(@rosewater, 18%), @rosewater); }
+      .prettyprint .dec { color: #ink(@rosewater; 18%)[@result]; }
       .prettyprint .var { color: @text; }
       .prettyprint .fun { color: @blue; }
-      .prettyprint .linenums { color: @overlay1; }
-      .prettyprint .linenums li:nth-child(even) { background-color: @surface1; }
+      .prettyprint .linenums { color: @subtext0; }
+      .prettyprint .linenums li:nth-child(even) { background-color: @mantle; }
       .Code-table .Code-table_content_separator, .Code-table .Code-table_content_separator td,
       .Code-split-table .Line-src.separator {
-        color: @peach;
+        color: #ink(@peach; 12.1%)[@result];
         background-color: @surface0;
       }
-      .code-view__header { color: @pink; }
+      .code-view__header {
+        color: #ink(@pink; 11.2%)[@result];
+        background-color: @mantle;
+      }
       .Code-table .Line-number span { color: @overlay1; }
       .pill--default, .pill-inline-list__item-link, .tab-buttons__pill,
       .wiki-tag-list__count, .filter-nav.-wiki-tag .filter-nav__link {
@@ -277,7 +283,7 @@
 
       .surfaces() when (@flavor = latte) {
         // Latte runs light to dark, opposite to Backlog's dark tokens.
-        @surfaceInput: @base;
+        @surfaceInput: @mantle;
         @surfacePage: @base;
         @surfaceSidebar: @crust;
         @surfaceWeak: @mantle;
@@ -289,7 +295,7 @@
         @surfaceHighlight: @surface2;
       }
       .surfaces() when not (@flavor = latte) {
-        @surfaceInput: @base;
+        @surfaceInput: @surface0;
         @surfacePage: @base;
         @surfaceSidebar: @mantle;
         @surfaceWeak: @mantle;
@@ -503,7 +509,7 @@
       --statusColor-other-rgb: red(@mauve), green(@mauve), blue(@mauve);
       --successColorScaleAccent: @green;
       --successColorScaleBase: fade(@green, 16%);
-      --successColorScaleText: if((@flavor = latte), darken(@green, 3.7%), @green);
+      --successColorScaleText: #ink(@green; 3.7%)[@result];
       --svnActionColor: @teal;
       --svnActionColor-rgb: red(@teal), green(@teal), blue(@teal);
       --textColorDefault: @text;
@@ -524,7 +530,7 @@
       }
       --warningColorScaleAccent: @yellow;
       --warningColorScaleBase: fade(@yellow, 16%);
-      --warningColorScaleText: if((@flavor = latte), darken(@yellow, 9.5%), @yellow);
+      --warningColorScaleText: #ink(@yellow; 9.5%)[@result];
       --wikiActionColor: @pink;
       --wikiActionColor-rgb: red(@pink), green(@pink), blue(@pink);
     }
@@ -572,11 +578,14 @@
       #state(@color; @amount) {
         @result: if((@flavor = latte) and (#on(@color)[@result] = @base), darken(@color, @amount), lighten(@color, @amount));
       }
-      #ink(@color) {
-        // Pure Latte hues need the smallest 0.1% lightness correction on their 22% tint over base.
-        @amount: if((@color = @rosewater), 13.6%, if((@color = @flamingo), 9.7%, if((@color = @pink), 16.4%, if((@color = @maroon), 5.7%, if((@color = @peach), 10.1%, if((@color = @yellow), 10.6%, if((@color = @green), 4.9%, if((@color = @teal), 2.8%, if((@color = @sky), 9%, if((@color = @sapphire), 6.2%, if((@color = @lavender), 5.8%, 0%)))))))))));
-        @result: if((@flavor = latte), darken(@color, @amount), @color);
+      #nuInk(@color) {
+        @amount: if((@color = @rosewater), 15.6%, if((@color = @flamingo), 12.2%, if((@color = @pink), 19.6%, if((@color = @red), 1.2%, if((@color = @maroon), 9.9%, if((@color = @peach), 12.1%, if((@color = @yellow), 12.1%, if((@color = @green), 6.6%, if((@color = @teal), 4.4%, if((@color = @blue), 1.1%, if((@color = @sky), 10.7%, if((@color = @sapphire), 7.8%, if((@color = @lavender), 7.4%, 0%)))))))))))));
+        @result: #ink(@color; @amount)[@result];
       }
+      #marker(@hue) {
+        @result: if((@flavor = latte), fade(@hue, 24%), @hue);
+      }
+      @highlightWeight: if((@flavor = frappe), 26%, 30%);
       @onAccent: #on(@accent)[@result];
       @onDanger: #on(@red)[@result];
       @onWarning: #on(@yellow)[@result];
@@ -592,7 +601,6 @@
         @onInverted: @base;
         @markerContent: @text;
         @tint: 22%;
-        @markerWeight: 22%;
       }
       .roles() when not (@flavor = latte) {
         @sidebar: @mantle;
@@ -604,7 +612,6 @@
         @onInverted: @base;
         @markerContent: @base;
         @tint: 18%;
-        @markerWeight: 100%;
       }
       .roles();
       --nuui-bg-ai-default: linear-gradient(115deg, fade(@sapphire, 8%), fade(@mauve, 10%), fade(@pink, 8%));
@@ -618,10 +625,10 @@
       --nuui-bg-danger-default: @red;
       --nuui-bg-danger-ghost-active: fade(@red, 30%);
       --nuui-bg-danger-ghost-hover: fade(@red, @tint);
-      --nuui-bg-danger-highlight: fade(@red, @tint);
+      --nuui-bg-danger-highlight: fade(@red, @highlightWeight);
       --nuui-bg-danger-hover: #state(@red; 2%)[@result];
       --nuui-bg-danger-shape: @red;
-      --nuui-bg-danger-subtle: fade(@red, @tint);
+      --nuui-bg-danger-subtle: fade(@red, 14%);
       --nuui-bg-default: @default;
       --nuui-bg-disabled: if((@flavor = latte), darken(@surface0, 3%), lighten(@surface0, 3%));
       --nuui-bg-floating: @floating;
@@ -634,63 +641,63 @@
       --nuui-bg-highlight: @surface1;
       --nuui-bg-info-banner: fade(@blue, @tint);
       --nuui-bg-info-default: @blue;
-      --nuui-bg-info-highlight: fade(@blue, @tint);
-      --nuui-bg-info-subtle: fade(@blue, @tint);
+      --nuui-bg-info-highlight: fade(@blue, @highlightWeight);
+      --nuui-bg-info-subtle: fade(@blue, 14%);
       --nuui-bg-inverted: @inverted;
-      --nuui-bg-marker-beige-default: if((@flavor = latte), fade(@rosewater, @markerWeight), @rosewater);
-      --nuui-bg-marker-beige-highlight: fade(@rosewater, @tint);
-      --nuui-bg-marker-beige-shape: if((@flavor = latte), fade(@rosewater, @markerWeight), @rosewater);
-      --nuui-bg-marker-beige-subtle: fade(@rosewater, @tint);
-      --nuui-bg-marker-blue-default: if((@flavor = latte), fade(@blue, @markerWeight), @blue);
-      --nuui-bg-marker-blue-highlight: fade(@blue, @tint);
-      --nuui-bg-marker-blue-shape: if((@flavor = latte), fade(@blue, @markerWeight), @blue);
-      --nuui-bg-marker-blue-subtle: fade(@blue, @tint);
-      --nuui-bg-marker-bordeaux-default: if((@flavor = latte), fade(@maroon, @markerWeight), @maroon);
-      --nuui-bg-marker-bordeaux-highlight: fade(@maroon, @tint);
-      --nuui-bg-marker-bordeaux-shape: if((@flavor = latte), fade(@maroon, @markerWeight), @maroon);
-      --nuui-bg-marker-bordeaux-subtle: fade(@maroon, @tint);
-      --nuui-bg-marker-cyan-default: if((@flavor = latte), fade(@teal, @markerWeight), @teal);
-      --nuui-bg-marker-cyan-highlight: fade(@teal, @tint);
-      --nuui-bg-marker-cyan-shape: if((@flavor = latte), fade(@teal, @markerWeight), @teal);
-      --nuui-bg-marker-cyan-subtle: fade(@teal, @tint);
-      --nuui-bg-marker-green-default: if((@flavor = latte), fade(@green, @markerWeight), @green);
-      --nuui-bg-marker-green-highlight: fade(@green, @tint);
-      --nuui-bg-marker-green-shape: if((@flavor = latte), fade(@green, @markerWeight), @green);
-      --nuui-bg-marker-green-subtle: fade(@green, @tint);
-      --nuui-bg-marker-grey-default: if((@flavor = latte), fade(@subtext0, @markerWeight), @subtext0);
-      --nuui-bg-marker-grey-highlight: fade(@subtext0, @tint);
-      --nuui-bg-marker-grey-shape: if((@flavor = latte), fade(@subtext0, @markerWeight), @subtext0);
-      --nuui-bg-marker-grey-subtle: fade(@subtext0, @tint);
+      --nuui-bg-marker-beige-default: #marker(@rosewater)[@result];
+      --nuui-bg-marker-beige-highlight: fade(@rosewater, @highlightWeight);
+      --nuui-bg-marker-beige-shape: #marker(@rosewater)[@result];
+      --nuui-bg-marker-beige-subtle: fade(@rosewater, 14%);
+      --nuui-bg-marker-blue-default: #marker(@blue)[@result];
+      --nuui-bg-marker-blue-highlight: fade(@blue, @highlightWeight);
+      --nuui-bg-marker-blue-shape: #marker(@blue)[@result];
+      --nuui-bg-marker-blue-subtle: fade(@blue, 14%);
+      --nuui-bg-marker-bordeaux-default: #marker(@maroon)[@result];
+      --nuui-bg-marker-bordeaux-highlight: fade(@maroon, @highlightWeight);
+      --nuui-bg-marker-bordeaux-shape: #marker(@maroon)[@result];
+      --nuui-bg-marker-bordeaux-subtle: fade(@maroon, 14%);
+      --nuui-bg-marker-cyan-default: #marker(@teal)[@result];
+      --nuui-bg-marker-cyan-highlight: fade(@teal, @highlightWeight);
+      --nuui-bg-marker-cyan-shape: #marker(@teal)[@result];
+      --nuui-bg-marker-cyan-subtle: fade(@teal, 14%);
+      --nuui-bg-marker-green-default: #marker(@green)[@result];
+      --nuui-bg-marker-green-highlight: fade(@green, @highlightWeight);
+      --nuui-bg-marker-green-shape: #marker(@green)[@result];
+      --nuui-bg-marker-green-subtle: fade(@green, 14%);
+      --nuui-bg-marker-grey-default: #marker(@subtext0)[@result];
+      --nuui-bg-marker-grey-highlight: fade(@subtext0, @highlightWeight);
+      --nuui-bg-marker-grey-shape: #marker(@subtext0)[@result];
+      --nuui-bg-marker-grey-subtle: fade(@subtext0, 14%);
       --nuui-bg-marker-interactive-layer-active: fade(@text, 16%);
       --nuui-bg-marker-interactive-layer-hover: fade(@text, 8%);
-      --nuui-bg-marker-lime-default: if((@flavor = latte), fade(@green, @markerWeight), @green);
-      --nuui-bg-marker-lime-highlight: fade(@green, @tint);
-      --nuui-bg-marker-lime-shape: if((@flavor = latte), fade(@green, @markerWeight), @green);
-      --nuui-bg-marker-lime-subtle: fade(@green, @tint);
-      --nuui-bg-marker-magenta-default: if((@flavor = latte), fade(@pink, @markerWeight), @pink);
-      --nuui-bg-marker-magenta-highlight: fade(@pink, @tint);
-      --nuui-bg-marker-magenta-shape: if((@flavor = latte), fade(@pink, @markerWeight), @pink);
-      --nuui-bg-marker-magenta-subtle: fade(@pink, @tint);
-      --nuui-bg-marker-orange-default: if((@flavor = latte), fade(@peach, @markerWeight), @peach);
-      --nuui-bg-marker-orange-highlight: fade(@peach, @tint);
-      --nuui-bg-marker-orange-shape: if((@flavor = latte), fade(@peach, @markerWeight), @peach);
-      --nuui-bg-marker-orange-subtle: fade(@peach, @tint);
-      --nuui-bg-marker-pink-default: if((@flavor = latte), fade(@pink, @markerWeight), @pink);
-      --nuui-bg-marker-pink-highlight: fade(@pink, @tint);
-      --nuui-bg-marker-pink-shape: if((@flavor = latte), fade(@pink, @markerWeight), @pink);
-      --nuui-bg-marker-pink-subtle: fade(@pink, @tint);
-      --nuui-bg-marker-purple-default: if((@flavor = latte), fade(@mauve, @markerWeight), @mauve);
-      --nuui-bg-marker-purple-highlight: fade(@mauve, @tint);
-      --nuui-bg-marker-purple-shape: if((@flavor = latte), fade(@mauve, @markerWeight), @mauve);
-      --nuui-bg-marker-purple-subtle: fade(@mauve, @tint);
-      --nuui-bg-marker-red-default: if((@flavor = latte), fade(@red, @markerWeight), @red);
-      --nuui-bg-marker-red-highlight: fade(@red, @tint);
-      --nuui-bg-marker-red-shape: if((@flavor = latte), fade(@red, @markerWeight), @red);
-      --nuui-bg-marker-red-subtle: fade(@red, @tint);
-      --nuui-bg-marker-yellow-default: if((@flavor = latte), fade(@yellow, @markerWeight), @yellow);
-      --nuui-bg-marker-yellow-highlight: fade(@yellow, @tint);
-      --nuui-bg-marker-yellow-shape: if((@flavor = latte), fade(@yellow, @markerWeight), @yellow);
-      --nuui-bg-marker-yellow-subtle: fade(@yellow, @tint);
+      --nuui-bg-marker-lime-default: #marker(@green)[@result];
+      --nuui-bg-marker-lime-highlight: fade(@green, @highlightWeight);
+      --nuui-bg-marker-lime-shape: #marker(@green)[@result];
+      --nuui-bg-marker-lime-subtle: fade(@green, 14%);
+      --nuui-bg-marker-magenta-default: #marker(@pink)[@result];
+      --nuui-bg-marker-magenta-highlight: fade(@pink, @highlightWeight);
+      --nuui-bg-marker-magenta-shape: #marker(@pink)[@result];
+      --nuui-bg-marker-magenta-subtle: fade(@pink, 14%);
+      --nuui-bg-marker-orange-default: #marker(@peach)[@result];
+      --nuui-bg-marker-orange-highlight: fade(@peach, @highlightWeight);
+      --nuui-bg-marker-orange-shape: #marker(@peach)[@result];
+      --nuui-bg-marker-orange-subtle: fade(@peach, 14%);
+      --nuui-bg-marker-pink-default: #marker(@pink)[@result];
+      --nuui-bg-marker-pink-highlight: fade(@pink, @highlightWeight);
+      --nuui-bg-marker-pink-shape: #marker(@pink)[@result];
+      --nuui-bg-marker-pink-subtle: fade(@pink, 14%);
+      --nuui-bg-marker-purple-default: #marker(@mauve)[@result];
+      --nuui-bg-marker-purple-highlight: fade(@mauve, @highlightWeight);
+      --nuui-bg-marker-purple-shape: #marker(@mauve)[@result];
+      --nuui-bg-marker-purple-subtle: fade(@mauve, 14%);
+      --nuui-bg-marker-red-default: #marker(@red)[@result];
+      --nuui-bg-marker-red-highlight: fade(@red, @highlightWeight);
+      --nuui-bg-marker-red-shape: #marker(@red)[@result];
+      --nuui-bg-marker-red-subtle: fade(@red, 14%);
+      --nuui-bg-marker-yellow-default: #marker(@yellow)[@result];
+      --nuui-bg-marker-yellow-highlight: fade(@yellow, @highlightWeight);
+      --nuui-bg-marker-yellow-shape: #marker(@yellow)[@result];
+      --nuui-bg-marker-yellow-subtle: fade(@yellow, 14%);
       --nuui-bg-overlay: fade(@crust, 65%);
       --nuui-bg-primary-active: #state(@accent; 4%)[@result];
       --nuui-bg-primary-default: @accent;
@@ -703,15 +710,15 @@
       --nuui-bg-subtle: @subtle;
       --nuui-bg-success-banner: fade(@green, @tint);
       --nuui-bg-success-default: @green;
-      --nuui-bg-success-highlight: fade(@green, @tint);
+      --nuui-bg-success-highlight: fade(@green, @highlightWeight);
       --nuui-bg-success-shape: @green;
-      --nuui-bg-success-subtle: fade(@green, @tint);
+      --nuui-bg-success-subtle: fade(@green, 14%);
       --nuui-bg-theme-nav: @sidebar;
       --nuui-bg-warning-banner: fade(@yellow, @tint);
       --nuui-bg-warning-default: @yellow;
-      --nuui-bg-warning-highlight: fade(@yellow, @tint);
+      --nuui-bg-warning-highlight: fade(@yellow, @highlightWeight);
       --nuui-bg-warning-shape: @yellow;
-      --nuui-bg-warning-subtle: fade(@yellow, @tint);
+      --nuui-bg-warning-subtle: fade(@yellow, 14%);
       --nuui-border-ai: linear-gradient(135deg, @sapphire, @mauve, @pink);
       --nuui-border-button: @overlay0;
       --nuui-border-danger-default: @red;
@@ -724,31 +731,31 @@
       --nuui-border-info-subtle: fade(@blue, 30%);
       --nuui-border-inverted: @onInverted;
       --nuui-border-marker-beige-default: fade(@rosewater, 30%);
-      --nuui-border-marker-beige-subtle: fade(@rosewater, 30%);
+      --nuui-border-marker-beige-subtle: fade(@rosewater, 16%);
       --nuui-border-marker-blue-default: fade(@blue, 30%);
-      --nuui-border-marker-blue-subtle: fade(@blue, 30%);
+      --nuui-border-marker-blue-subtle: fade(@blue, 16%);
       --nuui-border-marker-bordeaux-default: fade(@maroon, 30%);
-      --nuui-border-marker-bordeaux-subtle: fade(@maroon, 30%);
+      --nuui-border-marker-bordeaux-subtle: fade(@maroon, 16%);
       --nuui-border-marker-cyan-default: fade(@teal, 30%);
-      --nuui-border-marker-cyan-subtle: fade(@teal, 30%);
+      --nuui-border-marker-cyan-subtle: fade(@teal, 16%);
       --nuui-border-marker-green-default: fade(@green, 30%);
-      --nuui-border-marker-green-subtle: fade(@green, 30%);
+      --nuui-border-marker-green-subtle: fade(@green, 16%);
       --nuui-border-marker-grey-default: fade(@subtext0, 30%);
-      --nuui-border-marker-grey-subtle: fade(@subtext0, 30%);
+      --nuui-border-marker-grey-subtle: fade(@subtext0, 16%);
       --nuui-border-marker-lime-default: fade(@green, 30%);
-      --nuui-border-marker-lime-subtle: fade(@green, 30%);
+      --nuui-border-marker-lime-subtle: fade(@green, 16%);
       --nuui-border-marker-magenta-default: fade(@pink, 30%);
-      --nuui-border-marker-magenta-subtle: fade(@pink, 30%);
+      --nuui-border-marker-magenta-subtle: fade(@pink, 16%);
       --nuui-border-marker-orange-default: fade(@peach, 30%);
-      --nuui-border-marker-orange-subtle: fade(@peach, 30%);
+      --nuui-border-marker-orange-subtle: fade(@peach, 16%);
       --nuui-border-marker-pink-default: fade(@pink, 30%);
-      --nuui-border-marker-pink-subtle: fade(@pink, 30%);
+      --nuui-border-marker-pink-subtle: fade(@pink, 16%);
       --nuui-border-marker-purple-default: fade(@mauve, 30%);
-      --nuui-border-marker-purple-subtle: fade(@mauve, 30%);
+      --nuui-border-marker-purple-subtle: fade(@mauve, 16%);
       --nuui-border-marker-red-default: fade(@red, 30%);
-      --nuui-border-marker-red-subtle: fade(@red, 30%);
+      --nuui-border-marker-red-subtle: fade(@red, 16%);
       --nuui-border-marker-yellow-default: fade(@yellow, 30%);
-      --nuui-border-marker-yellow-subtle: fade(@yellow, 30%);
+      --nuui-border-marker-yellow-subtle: fade(@yellow, 16%);
       --nuui-border-strong: @overlay0;
       --nuui-border-subtle: @surface0;
       --nuui-border-success-subtle: fade(@green, 30%);
@@ -760,25 +767,25 @@
       --nuui-elevation-shadow-medium: 0 4px 12px fade(@crust, 24%);
       --nuui-elevation-shadow-small: 0 2px 4px fade(@crust, 18%);
       --nuui-icon-ai: linear-gradient(125deg, @blue, @mauve, @pink);
-      --nuui-icon-danger: #ink(@red)[@result];
+      --nuui-icon-danger: #nuInk(@red)[@result];
       --nuui-icon-default: @text;
       --nuui-icon-disabled: @overlay0;
-      --nuui-icon-info: #ink(@blue)[@result];
+      --nuui-icon-info: #nuInk(@blue)[@result];
       --nuui-icon-inverted: @onInverted;
-      --nuui-icon-link: #ink(@accent)[@result];
-      --nuui-icon-marker-beige: #ink(@rosewater)[@result];
-      --nuui-icon-marker-blue: #ink(@blue)[@result];
-      --nuui-icon-marker-bordeaux: #ink(@maroon)[@result];
-      --nuui-icon-marker-cyan: #ink(@teal)[@result];
-      --nuui-icon-marker-green: #ink(@green)[@result];
-      --nuui-icon-marker-grey: #ink(@subtext0)[@result];
-      --nuui-icon-marker-lime: #ink(@green)[@result];
-      --nuui-icon-marker-magenta: #ink(@pink)[@result];
-      --nuui-icon-marker-orange: #ink(@peach)[@result];
-      --nuui-icon-marker-pink: #ink(@pink)[@result];
-      --nuui-icon-marker-purple: #ink(@mauve)[@result];
-      --nuui-icon-marker-red: #ink(@red)[@result];
-      --nuui-icon-marker-yellow: #ink(@yellow)[@result];
+      --nuui-icon-link: #nuInk(@accent)[@result];
+      --nuui-icon-marker-beige: #nuInk(@rosewater)[@result];
+      --nuui-icon-marker-blue: #nuInk(@blue)[@result];
+      --nuui-icon-marker-bordeaux: #nuInk(@maroon)[@result];
+      --nuui-icon-marker-cyan: #nuInk(@teal)[@result];
+      --nuui-icon-marker-green: #nuInk(@green)[@result];
+      --nuui-icon-marker-grey: #nuInk(@subtext0)[@result];
+      --nuui-icon-marker-lime: #nuInk(@green)[@result];
+      --nuui-icon-marker-magenta: #nuInk(@pink)[@result];
+      --nuui-icon-marker-orange: #nuInk(@peach)[@result];
+      --nuui-icon-marker-pink: #nuInk(@pink)[@result];
+      --nuui-icon-marker-purple: #nuInk(@mauve)[@result];
+      --nuui-icon-marker-red: #nuInk(@red)[@result];
+      --nuui-icon-marker-yellow: #nuInk(@yellow)[@result];
       --nuui-icon-on-danger: @onDanger;
       --nuui-icon-on-ghost: @text;
       --nuui-icon-on-info: @onInfo;
@@ -788,31 +795,31 @@
       --nuui-icon-on-success: @onSuccess;
       --nuui-icon-on-theme-nav: @text;
       --nuui-icon-on-warning: @onWarning;
-      --nuui-icon-primary: #ink(@accent)[@result];
+      --nuui-icon-primary: #nuInk(@accent)[@result];
       --nuui-icon-subtle: @subtext0;
-      --nuui-icon-success: #ink(@green)[@result];
-      --nuui-icon-warning: #ink(@yellow)[@result];
-      --nuui-text-danger: #ink(@red)[@result];
+      --nuui-icon-success: #nuInk(@green)[@result];
+      --nuui-icon-warning: #nuInk(@yellow)[@result];
+      --nuui-text-danger: #nuInk(@red)[@result];
       --nuui-text-default: @text;
       --nuui-text-disabled: @overlay0;
-      --nuui-text-info: #ink(@blue)[@result];
+      --nuui-text-info: #nuInk(@blue)[@result];
       --nuui-text-inverted: @onInverted;
       --nuui-text-inverted-disabled: @surface2;
       --nuui-text-inverted-subtle: @surface1;
-      --nuui-text-link: #ink(@accent)[@result];
-      --nuui-text-marker-beige: #ink(@rosewater)[@result];
-      --nuui-text-marker-blue: #ink(@blue)[@result];
-      --nuui-text-marker-bordeaux: #ink(@maroon)[@result];
-      --nuui-text-marker-cyan: #ink(@teal)[@result];
-      --nuui-text-marker-green: #ink(@green)[@result];
-      --nuui-text-marker-grey: #ink(@subtext0)[@result];
-      --nuui-text-marker-lime: #ink(@green)[@result];
-      --nuui-text-marker-magenta: #ink(@pink)[@result];
-      --nuui-text-marker-orange: #ink(@peach)[@result];
-      --nuui-text-marker-pink: #ink(@pink)[@result];
-      --nuui-text-marker-purple: #ink(@mauve)[@result];
-      --nuui-text-marker-red: #ink(@red)[@result];
-      --nuui-text-marker-yellow: #ink(@yellow)[@result];
+      --nuui-text-link: #nuInk(@accent)[@result];
+      --nuui-text-marker-beige: #nuInk(@rosewater)[@result];
+      --nuui-text-marker-blue: #nuInk(@blue)[@result];
+      --nuui-text-marker-bordeaux: #nuInk(@maroon)[@result];
+      --nuui-text-marker-cyan: #nuInk(@teal)[@result];
+      --nuui-text-marker-green: #nuInk(@green)[@result];
+      --nuui-text-marker-grey: #nuInk(@subtext0)[@result];
+      --nuui-text-marker-lime: #nuInk(@green)[@result];
+      --nuui-text-marker-magenta: #nuInk(@pink)[@result];
+      --nuui-text-marker-orange: #nuInk(@peach)[@result];
+      --nuui-text-marker-pink: #nuInk(@pink)[@result];
+      --nuui-text-marker-purple: #nuInk(@mauve)[@result];
+      --nuui-text-marker-red: #nuInk(@red)[@result];
+      --nuui-text-marker-yellow: #nuInk(@yellow)[@result];
       --nuui-text-on-danger: @onDanger;
       --nuui-text-on-ghost: @text;
       --nuui-text-on-info: @onInfo;
@@ -823,7 +830,7 @@
       --nuui-text-on-theme-nav: @text;
       --nuui-text-on-warning: @onWarning;
       --nuui-text-subtle: @subtext0;
-      --nuui-text-success: #ink(@green)[@result];
-      --nuui-text-warning: #ink(@yellow)[@result];
+      --nuui-text-success: #nuInk(@green)[@result];
+      --nuui-text-warning: #nuInk(@yellow)[@result];
     }
 }

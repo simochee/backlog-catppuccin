@@ -145,7 +145,13 @@ hosting base. The type manifest contains public token names only.
 defines the pane, surface, text, cursor, selection, syntax and diff roles. Neutral
 steps replace project tints that also paint fixed or overlapping surfaces. Other
 tints use palette alpha. Colored ink uses pure hues, with minimum 0.1% Latte HSL
-corrections capped at 20% where needed for the 3:1 floor. Exact-color exceptions
+corrections capped at 20% where needed for the 3:1 floor. File-path headers use
+mantle; separator ink uses surface0. Line numbers use subtext0 on surface0 and
+alternate mantle rows. Inputs use surface0 in dark flavors and mantle in Latte,
+with a base page in every flavor. Marker tints use 14% subtle, 24% Latte
+default/shape, and 30% highlight (26% in Frappé to retain 3:1); dark default/shape
+markers retain solid palette hues. Marker borders use 16% subtle and 30% default.
+Exact-color exceptions
 in `scripts/style-policy.mjs` document the corrections exceeding ΔE 12. Primary
 hover/active colors change lightness by 2%/4%; disabled neutral surfaces use 3%
 to distinguish them from every ghost state; Frappé pressed uses a 2% surface2
@@ -158,7 +164,7 @@ Color literals, named colors, color functions, RGB triplets, and references to
 known color tokens are recognized. Numbers and dimensions are excluded. Composite
 shadows and gradients in the legacy set are reported separately and left
 unchanged in Phase 1. Coverage reports legacy and new-design assignments separately;
-the new-design includes color-bearing AI and elevation composites. Non-color tokens
+the new design includes color-bearing AI and elevation composites. Non-color tokens
 (such as dimensions and opacity) are left untouched. Passing coverage does
 not mean every visible color is themed: direct colors, runtime styles, and CSS
 only linked on authenticated pages remain for the human's Stylus check.

@@ -96,7 +96,7 @@ test('CLI checks execute from a path containing spaces and URL-encoded character
 function surfaceValues(flavor = 'latte') {
   const spec = expectedOrder[flavor === 'latte' ? 'latte' : 'dark'];
   const shades = flavor === 'latte'
-    ? ['#fefefe', '#eeeeee', '#dddddd', '#cccccc', '#bbbbbb', '#aaaaaa']
+    ? ['#fefefe', '#eeeeee', '#dddddd', '#cccccc', '#bbbbbb', '#aaaaaa', '#999999']
     : ['#111111', '#222222', '#333333', '#444444', '#555555'];
   return Object.fromEntries([
     ...spec.order.flatMap((group, index) => group.map((name) => [name, shades[index]])),
@@ -114,7 +114,7 @@ function surfaces(values = surfaceValues()) {
 test('latte preserves pane ordering before secondary surfaces', () => {
   assert.doesNotThrow(() => checkNeutralOrder(surfaces(), 'latte'));
   const values = surfaceValues();
-  values['--backgroundColorSchemeBase'] = '#dddddd';
+  values['--backgroundColorSchemeBase'] = '#ffffff';
   assert.throws(() => checkNeutralOrder(surfaces(values), 'latte'), /--backgroundColorSchemeBase/);
 });
 
@@ -146,7 +146,7 @@ for (const [left, right] of expectedOrder.latte.distinct) {
 
 test('latte rejects completely flat neutral surfaces', () => {
   const values = Object.fromEntries(Object.keys(surfaceValues()).map((name) => [name, '#eee']));
-  assert.throws(() => checkNeutralOrder(surfaces(values), 'latte'), /--backgroundColorDisabled.*--backgroundColorHover/);
+  assert.throws(() => checkNeutralOrder(surfaces(values), 'latte'), /states must differ/);
 });
 
 test('neutral ordering names missing properties', () => {
