@@ -52,21 +52,23 @@ test('CLI checks execute from a path containing spaces and URL-encoded character
       --nuui-bg-ghost-hover: #ccc;
       --nuui-bg-ghost-active: #aaa;
       --nuui-bg-subtle: #fff;
+      --nuui-bg-row-header: #fff;
       --nuui-bg-disabled: #ddd;
     }
     ${newDesignTokenScope} { .nu(@lightFlavor); body { .nu(@lightFlavor); } }
     ${newDesignTokenScope}.dark-mode { .nu(@darkFlavor); body { .nu(@darkFlavor); } }`);
   await writeFile(join(directory, 'mock-fetch.mjs'), `globalThis.fetch = async (url) => new Response(
     String(url).endsWith('.less') ? '/* fixture library */' :
-    String(url).endsWith('.css') ? ':root { --backgroundColorBase: red; }' :
-    String(url) === process.env.BACKLOG_PAGE_URL ? '<link rel="stylesheet" href="https://assets.backlog.com/fixture.css">' :
+    String(url).endsWith('.css') ? ':root { --backgroundColorBase: red; --nuui-bg-default: white; }' :
+    String(url) === process.env.BACKLOG_PAGE_URL ? '<link rel="stylesheet" href="https://assets.backlog.com/styles_nu-ui/fixture.css">' :
     (() => { throw new Error('Unexpected discovery page'); })());`);
+  await writeFile(join(directory, 'offline-fetch.mjs'), `globalThis.fetch = async (url) => { if (String(url) !== 'https://userstyles.catppuccin.com/lib/std/v1.less') throw new Error('Backlog request forbidden: ' + url); return new Response('/* fixture library */'); };`);
   for (const [script, expected] of [
     ['compile', /mocha: PASS[\s\S]*Independent light\/dark switching.*PASS/],
     ['coverage', /1 assignable; 0 unassigned/],
     ['literals', /Summary: 0 stylesheets; 0 selector groups; 0 property\/kind entries/],
   ]) {
-    const { stdout } = await promisify(execFile)(process.execPath, ['--import', pathToFileURL(join(directory, 'mock-fetch.mjs')).href, join(directory, 'scripts', `${script}.mjs`)], { env: { ...process.env, BACKLOG_PAGE_URL: 'https://simochee.backlog.com/fixture-page' } });
+    const { stdout } = await promisify(execFile)(process.execPath, ['--import', pathToFileURL(join(directory, script === 'compile' ? 'offline-fetch.mjs' : 'mock-fetch.mjs')).href, join(directory, 'scripts', `${script}.mjs`)], { env: { ...process.env, BACKLOG_PAGE_URL: 'https://simochee.backlog.com/fixture-page' } });
     assert.match(stdout, expected);
     if (script === 'compile') {
       for (const flavor of ['latte', 'frappe', 'macchiato', 'mocha']) {

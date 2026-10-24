@@ -7,6 +7,7 @@ import colorNames from 'color-name';
 import { loadStylesheets, download } from './source.mjs';
 import { compile, libraryURL } from './compile.mjs';
 import { escapeSelector, errorPageGuard, legacyGuard, newDesignGuard } from './guards.mjs';
+const designGuardsPattern = new RegExp([errorPageGuard, legacyGuard, newDesignGuard].map(escapeSelector).join('|'), 'g');
 
 const properties = /^(?:color|background(?:-color|-image)?|border(?:-(?:top|right|bottom|left|block(?:-start|-end)?|inline(?:-start|-end)?))?(?:-color)?|outline(?:-color)?|(?:box|text)-shadow|text-decoration(?:-color)?|caret-color|accent-color|column-rule(?:-color)?|fill|stroke)$/i;
 const compare = (a, b) => a < b ? -1 : a > b ? 1 : 0;
@@ -45,7 +46,7 @@ function overrideIndex(css) {
     const conditions = context(rule);
     if (!conditions) return;
     for (let selector of postcss.list.comma(rule.selector)) {
-      selector = selector.replace(new RegExp([errorPageGuard, legacyGuard, newDesignGuard].map(escapeSelector).join('|'), 'g'), '');
+      selector = selector.replace(designGuardsPattern, '');
       selector = selector.replace(/^:root(?::root){4}(\.dark-mode)?\s+/, (_, dark) => dark ? '.dark-mode ' : '');
       selector = selector.replace(/^:root(\.dark-mode)\s+/, '$1 ');
       const key = normalize(selector);

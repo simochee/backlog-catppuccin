@@ -6,7 +6,7 @@ import selectorParser from 'postcss-selector-parser';
 import { selectorSpecificity, compare } from '@csstools/selector-specificity';
 import { errorPageGuard, legacyGuard, newDesignGuard, sharedTokenScope, legacyOverrideScope, newDesignTokenScope } from '../scripts/guards.mjs';
 import { checkErrorPageExclusion, checkNuStyle, nuContrastPairs, nuDistinctSurfaces, checkTooltipContrast } from '../scripts/compile.mjs';
-import { coverageSets, missingAssignments } from '../scripts/coverage.mjs';
+import { coverageSets, missingAssignments, discoverCoverage } from '../scripts/coverage.mjs';
 import { inspectCSS } from '../scripts/source.mjs';
 import { findLiterals } from '../scripts/literals.mjs';
 
@@ -59,14 +59,14 @@ test('design guards add zero specificity and add-on body beats site theme declar
 
 function validNu() {
   const entries = new Map(nuContrastPairs().flat().map((name) => [name, name.startsWith('bg-') ? '#fff' : '#111']));
-  entries.set('bg-canvas-backdrop', '#ccc');
-  entries.set('bg-canvas-default', '#ddd');
+  entries.set('bg-canvas-backdrop', '#bbb');
+  entries.set('bg-canvas-default', '#eee');
   entries.set('bg-floating', '#fff');
   entries.set('bg-ghost-hover', '#ccc');
   entries.set('bg-ghost-active', '#eee');
   entries.set('bg-subtle', '#fff');
+  entries.set('bg-row-header', '#fff');
   entries.set('bg-disabled', '#ddd');
-  entries.set('bg-canvas-default', '#eee');
   const declarations = [...entries].map(([name, value]) => `--nuui-${name}:${value}`).join(';');
   return postcss.parse(['', ' body', '.dark-mode', '.dark-mode body'].map((mode) => `${newDesignTokenScope}${mode} {${declarations}}`).join('\n'));
 }
@@ -157,6 +157,17 @@ test('every hosting surface stays distinct from ghost hover and disabled', () =>
     css.first.nodes.find((decl) => decl.prop === `--nuui-${left}`).value = css.first.nodes.find((decl) => decl.prop === `--nuui-${right}`).value;
     assert.throws(() => checkNuStyle(css, 'mocha'), /must differ/);
   }
+});
+
+test('live coverage and type parity fail when discovery or assignments are empty', async () => {
+  const { checkNuTokenTypes } = await import('../scripts/compile.mjs');
+  const legacy = { url: 'https://assets.backlog.com/styles/Common.css', css: ':root {--legacy:red}' };
+  const nu = { ...legacy, url: 'https://assets.backlog.com/styles_nu-ui/Common.css' };
+  assert.throws(() => discoverCoverage([legacy]), /No styles_nu-ui/);
+  assert.throws(() => discoverCoverage([nu]), /No --nuui-/);
+  assert.throws(() => discoverCoverage([{ ...nu, css: '' }]), /No color variables/);
+  assert.throws(() => checkNuTokenTypes(postcss.parse(''), inspectCSS(legacy.css)), /No --nuui-/);
+  assert.throws(() => checkNuTokenTypes(postcss.parse(''), inspectCSS(':root {--nuui-text:red}')), /No --nuui-.*assignments/);
 });
 
 test('each userstyle declares the same new-design marker once', async () => {

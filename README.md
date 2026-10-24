@@ -45,14 +45,21 @@ Extract color-variable **names**, one per line:
 npm run --silent extract
 ```
 
-Check live color-variable coverage (exits nonzero on missing assignments):
+Check live color-variable coverage and image/color type parity (exits nonzero
+on missing assignments or type mismatches, or if no new-design bundles or
+tokens are discovered):
 
 ```sh
 npm run check:coverage
 ```
 
 Compile both files in all four flavors and check RGB triplets, independent
-appearance switching, surface ordering, and add-on content/surface contrast (3:1 minimum):
+appearance switching, surface ordering, tooltip contrast, and add-on content/surface
+contrast. The floor is 3:1 except for Latte solid role surfaces, which have a
+2.5:1 floor; each pair below 3:1 is listed in the output. Default tooltips retain
+3:1 in every flavor. The Latte success tooltip uses the solid-surface exception
+because neither flavor ink reaches 3:1 on green. This check fetches only the
+Catppuccin library and does not request Backlog pages or stylesheets:
 
 ```sh
 npm run check:less

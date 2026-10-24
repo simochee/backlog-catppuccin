@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import less from 'less';
 import postcss from 'postcss';
 import selectorParser from 'postcss-selector-parser';
-import { download, loadStylesheets, inspectCSS } from './source.mjs';
+import { download } from './source.mjs';
 import { escapeSelector, errorPageGuard, legacyGuard, newDesignGuard, legacyScope, legacyDarkScope, sharedTokenScope, legacyOverrideScope, newDesignTokenScope } from './guards.mjs';
 import expectedOrder from '../test/fixtures/neutral-order.json' with { type: 'json' };
 
@@ -190,10 +190,14 @@ const nodeShape = (node) => [node.type, node.type === 'combinator' ? node.value.
   node.namespace, node.nodes?.map(nodeShape)];
 const guardShape = (guard) => JSON.stringify(nodeShape(selectorParser().astSync(guard, { lossless: false }).first.first));
 
+const tokenSelector = new RegExp(`^${escapeSelector(sharedTokenScope)}(?:\\.dark-mode)?(?: body)?(?: (?:\\[data-tooltip\\]|\\.message-tip|\\.simptip-(?:success|info|danger|error|warning)))?$`);
+const guardShapes = new Map([errorPageGuard, legacyGuard, newDesignGuard].map((guard) => [guard, guardShape(guard)]));
+const keyframesPattern = /^(?:-\w+-)?keyframes$/i;
+
 export function checkErrorPageExclusion(css, addon = false) {
   css.walkRules((rule) => {
     for (let parent = rule.parent; parent; parent = parent.parent) {
-      if (parent.type === 'atrule' && /^(?:-\w+-)?keyframes$/i.test(parent.name)) return;
+      if (parent.type === 'atrule' && keyframesPattern.test(parent.name)) return;
     }
     const ast = selectorParser().astSync(rule.selector);
     for (const selector of ast.nodes) {
@@ -201,11 +205,10 @@ export function checkErrorPageExclusion(css, addon = false) {
       const compound = selector.nodes.slice(0, end < 0 ? undefined : end);
       const anchored = compound.some((node) =>
         (node.type === 'pseudo' && node.value === ':root') || (node.type === 'class' && node.value === 'dark-mode'));
-      const tokenSelector = new RegExp(`^${escapeSelector(sharedTokenScope)}(?:\\.dark-mode)?(?: body)?(?: (?:\\[data-tooltip\\]|\\.message-tip|\\.simptip-(?:success|info|danger|error|warning)))?$`);
       const rootTokens = tokenSelector.test(selector.toString().trim()) && rule.nodes.every((node) =>
         node.type === 'comment' || (node.type === 'decl' && node.prop.startsWith('--')));
       const expected = addon ? newDesignGuard : rootTokens ? errorPageGuard : legacyGuard;
-      if (!anchored || !compound.some((node) => JSON.stringify(nodeShape(node)) === guardShape(expected))) {
+      if (!anchored || !compound.some((node) => JSON.stringify(nodeShape(node)) === guardShapes.get(expected))) {
         throw new Error(`Missing error-page guard or design guard: ${selector}`);
       }
     }
@@ -306,6 +309,7 @@ const allNuContrastPairs = nuContrastPairs();
 const accentNuContrastPairs = allNuContrastPairs.filter(([foreground]) => foreground.endsWith('-on-primary'));
 
 export function checkNuTokenTypes(css, discovered) {
+  if (![...discovered.names, ...discovered.composites].some((name) => name.startsWith('--nuui-'))) throw new Error('No --nuui-* tokens discovered for type parity');
   const images = new Set(discovered.images);
   const colors = new Set(discovered.names.filter((name) => !discovered.composites.includes(name)));
   let checked = 0;
@@ -317,6 +321,7 @@ export function checkNuTokenTypes(css, discovered) {
     if (!image && !(alias && colors.has(alias))) parseColor(decl.value, decl.prop);
     checked++;
   });
+  if (!checked) throw new Error('No --nuui-* assignments checked for type parity');
   return `New design image/color type parity: PASS (${[...images].filter((name) => name.startsWith('--nuui-')).length} discovered image tokens; ${checked} assignments)`;
 }
 
@@ -345,7 +350,7 @@ export function nuContrastFloor(flavor, foreground, background) {
 }
 
 export const nuDistinctSurfaces = [
-  ...['bg-canvas-default', 'bg-default', 'bg-floating', 'bg-subtle', 'bg-ghost-active'].map((surface) => ['bg-ghost-hover', surface]),
+  ...['bg-canvas-backdrop', 'bg-canvas-default', 'bg-default', 'bg-floating', 'bg-subtle', 'bg-row-header', 'bg-ghost-active'].map((surface) => ['bg-ghost-hover', surface]),
   ...['bg-floating', 'bg-subtle'].map((surface) => ['bg-disabled', surface]),
 ];
 
@@ -395,7 +400,6 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   try {
     const source = await readFile(new URL('../catppuccin.user.less', import.meta.url), 'utf8');
     const library = await download(libraryURL);
-    const discovered = inspectCSS((await loadStylesheets()).map(({ css }) => css).join('\n'));
     const addon = await readFile(new URL('../catppuccin-nu.user.less', import.meta.url), 'utf8');
     for (const flavor of ['latte', 'frappe', 'macchiato', 'mocha']) {
       const result = await compile(flavor, source, library);
@@ -417,22 +421,15 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     }
     for (const flavor of ['latte', 'frappe', 'macchiato', 'mocha']) {
       const css = postcss.parse((await compile(flavor, addon, library)).css);
-      console.log(checkNuTokenTypes(css, discovered));
       console.log(checkNuStyle(css, flavor));
       console.log(`${flavor} add-on: PASS`);
     }
     const accents = ['rosewater', 'flamingo', 'pink', 'mauve', 'red', 'maroon', 'peach', 'yellow', 'green', 'teal', 'blue', 'sapphire', 'sky', 'lavender', 'subtext0'];
     for (const flavor of ['latte', 'frappe', 'macchiato', 'mocha']) {
-      for (const accent of accents.filter((accent) => accent !== 'mauve')) {
+      await Promise.all(accents.filter((accent) => accent !== 'mauve').map(async (accent) => {
         const addonCSS = postcss.parse((await compile(flavor, addon, library, flavor, accent)).css);
-        checkNuTokenTypes(addonCSS, discovered);
-        checkNuStyle(addonCSS, `${flavor}/${accent}`);
-        const mainCSS = postcss.parse((await compile(flavor, source, library, flavor, accent)).css);
-        checkNeutralOrder(mainCSS, flavor);
-        checkOverrides(mainCSS);
-        checkErrorPageExclusion(mainCSS);
-        checkDisabledContrast(mainCSS, flavor);
-      }
+        checkNuStyle(addonCSS, `${flavor}/${accent}`, console.log, true);
+      }));
     }
     console.log('Both files compile; add-on contrast across all 15 accent choices and four flavors: PASS');
     const mixedNu = postcss.parse((await compile('latte', addon, library, 'mocha', 'green')).css);
