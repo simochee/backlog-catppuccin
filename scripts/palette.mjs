@@ -79,13 +79,20 @@ export function rgbToLab(rgb) {
   return [116 * y - 16, 500 * (x - y), 200 * (y - z)];
 }
 export const deltaE76 = (a, b) => Math.hypot(...a.map((v, i) => v - b[i]));
+const paletteLabs = new WeakMap();
+function preparedPalette(palette) {
+  if (!paletteLabs.has(palette)) paletteLabs.set(palette, Object.entries(palette).map(([name, color]) => {
+    const channels = parsePaletteColor(color);
+    return { name, color, channels, lab: rgbToLab(channels) };
+  }));
+  return paletteLabs.get(palette);
+}
 export function nearestPaletteColor(color, palette) {
   const rgb = Array.isArray(color) ? color : parsePaletteColor(color);
   const lab = rgbToLab(rgb);
   let nearest;
-  for (const [name, value] of Object.entries(palette)) {
-    const channels = parsePaletteColor(value);
-    const distance = deltaE76(lab, rgbToLab(channels));
+  for (const { name, color: value, channels, lab: paletteLab } of preparedPalette(palette)) {
+    const distance = deltaE76(lab, paletteLab);
     if (!nearest || distance < nearest.distance) nearest = { name, color: value, distance, exact: rgb.every((v, i) => Math.abs(v - channels[i]) < 1e-9) };
   }
   if (!nearest) throw new Error('Empty palette');
