@@ -2,7 +2,7 @@
 @name Backlog Catppuccin
 @namespace github.com/simochee/backlog-catppuccin
 @homepageURL https://github.com/simochee/backlog-catppuccin
-@version 2026.10.24
+@version 2026.10.25
 @updateURL https://github.com/simochee/backlog-catppuccin/raw/main/catppuccin.user.less
 @supportURL https://github.com/simochee/backlog-catppuccin/issues
 @description Soothing pastel theme for Backlog
@@ -195,10 +195,19 @@
 
     #tooltips(@flavor) {
       #lib.palette();
-      .simptip-success { --tooltipBaseColor: @green !important; --tooltip-base-color: @green !important; }
-      .simptip-info { --tooltipBaseColor: @blue !important; --tooltip-base-color: @blue !important; }
-      .simptip-danger, .simptip-error { --tooltipBaseColor: @red !important; --tooltip-base-color: @red !important; }
-      .simptip-warning { --tooltipBaseColor: @yellow !important; --tooltip-base-color: @yellow !important; }
+      @darkInk: if((@flavor = latte), @text, @crust);
+      @lightInk: if((@flavor = latte), @base, @text);
+      #variant(@background) {
+        @darkRatio: ((max(luma(@background), luma(@darkInk)) + 5%) / (min(luma(@background), luma(@darkInk)) + 5%));
+        @lightRatio: ((max(luma(@background), luma(@lightInk)) + 5%) / (min(luma(@background), luma(@lightInk)) + 5%));
+        --tooltipBaseColor: @background !important;
+        --tooltip-base-color: @background !important;
+        --tooltip-text-color: if((@darkRatio > @lightRatio), @darkInk, @lightInk) !important;
+      }
+      .simptip-success { #variant(@green); }
+      .simptip-info { #variant(@blue); }
+      .simptip-danger, .simptip-error { #variant(@red); }
+      .simptip-warning { #variant(@yellow); }
     }
 
     #roles(@flavor) {

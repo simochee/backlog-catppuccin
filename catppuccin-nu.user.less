@@ -2,7 +2,7 @@
 @name Backlog Catppuccin New Design
 @namespace github.com/simochee/backlog-catppuccin
 @homepageURL https://github.com/simochee/backlog-catppuccin
-@version 2026.10.24
+@version 2026.10.25
 @updateURL https://github.com/simochee/backlog-catppuccin/raw/main/catppuccin-nu.user.less
 @supportURL https://github.com/simochee/backlog-catppuccin/issues
 @description New design add-on; requires Backlog Catppuccin
@@ -115,10 +115,10 @@
       --nuui-bg-danger-shape: mix(@red, @base, @solidWeight);
       --nuui-bg-danger-subtle: mix(@red, @base, @tint);
       --nuui-bg-default: @default;
-      --nuui-bg-disabled: @surface0;
+      --nuui-bg-disabled: if((@flavor = latte), @surface0, @surface1);
       --nuui-bg-floating: @floating;
-      --nuui-bg-ghost-active: @surface1;
-      --nuui-bg-ghost-hover: @surface0;
+      --nuui-bg-ghost-active: if((@flavor = latte), @surface1, @surface2);
+      --nuui-bg-ghost-hover: if((@flavor = latte), @surface0, @surface1);
       --nuui-bg-ghost-inverted-active: mix(@inverted, @onInverted, 80%);
       --nuui-bg-ghost-inverted-hover: mix(@inverted, @onInverted, 90%);
       --nuui-bg-ghost-pressed: @surface2;

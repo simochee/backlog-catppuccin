@@ -248,6 +248,34 @@ export function contrastRatio(a, b) {
   return (Math.max(left, right) + 0.05) / (Math.min(left, right) + 0.05);
 }
 
+export const tooltipVariants = ['success', 'info', 'danger', 'error', 'warning'];
+export function checkTooltipContrast(css, flavor, reportException = console.log) {
+  const checked = new Set();
+  let minimum = Infinity;
+  const exceptions = new Set();
+  css.walkRules((rule) => {
+    const values = new Map(rule.nodes.filter((node) => node.type === 'decl').map((decl) => [decl.prop, decl.value]));
+    for (const selector of postcss.list.comma(rule.selector)) {
+      const mode = selector.includes('.dark-mode') ? '.dark-mode' : '';
+      const root = `${sharedTokenScope}${mode}`;
+      const variant = tooltipVariants.find((name) => selector === `${root} .simptip-${name}`);
+      if (selector !== root && !variant) continue;
+      const foreground = values.get('--tooltip-text-color');
+      const background = values.get('--tooltip-base-color');
+      const ratio = contrastRatio(foreground, background);
+      const floor = flavor === 'latte' && variant === 'success' ? 2.5 : 3;
+      if (ratio < floor) throw new Error(`${flavor} tooltip ${variant || 'default'} contrast: ${ratio.toFixed(3)}:1 < ${floor}:1`);
+      if (ratio < 3) exceptions.add(`${flavor} contrast exception: tooltip ${variant}: ${foreground} / ${background}: ${ratio.toFixed(3)}:1 >= 2.5:1`);
+      if (values.get('--tooltipBaseColor') !== background) throw new Error('Tooltip background aliases must agree');
+      checked.add(`${mode}/${variant || 'default'}`);
+      minimum = Math.min(minimum, ratio);
+    }
+  });
+  if (checked.size !== 2 * (tooltipVariants.length + 1)) throw new Error('Missing default or variant tooltip contrast pairs');
+  for (const message of exceptions) reportException(message);
+  return `${flavor} tooltip contrast: PASS (${checked.size} pairs; minimum ${minimum.toFixed(3)}:1; ${exceptions.size} Latte solid exceptions)`;
+}
+
 export const markerNames = ['pink', 'bordeaux', 'red', 'beige', 'orange', 'yellow', 'lime', 'green', 'cyan', 'blue', 'purple', 'magenta', 'grey'];
 export function nuContrastPairs() {
   const pairs = [];
@@ -273,6 +301,9 @@ export function nuContrastPairs() {
   }
   return pairs;
 }
+
+const allNuContrastPairs = nuContrastPairs();
+const accentNuContrastPairs = allNuContrastPairs.filter(([foreground]) => foreground.endsWith('-on-primary'));
 
 export function checkNuTokenTypes(css, discovered) {
   const images = new Set(discovered.images);
@@ -313,14 +344,20 @@ export function nuContrastFloor(flavor, foreground, background) {
     /^bg-(?:primary|danger|warning|success|info)-(?:default|hover|active)$/.test(background) ? 2.5 : 3;
 }
 
-export function checkNuStyle(css, flavor, reportException = console.log) {
-  checkErrorPageExclusion(css, true);
+export const nuDistinctSurfaces = [
+  ...['bg-canvas-default', 'bg-default', 'bg-floating', 'bg-subtle', 'bg-ghost-active'].map((surface) => ['bg-ghost-hover', surface]),
+  ...['bg-floating', 'bg-subtle'].map((surface) => ['bg-disabled', surface]),
+];
+
+export function checkNuStyle(css, flavor, reportException = console.log, accentOnly = false) {
+  if (!accentOnly) checkErrorPageExclusion(css, true);
   let rules = 0;
   let minimum = Infinity;
   const exceptions = new Set();
   css.walkRules((rule) => {
     const component = Object.entries(nuComponentTokens).find(([selector]) => rule.selector === `${newDesignTokenScope} ${selector}`)?.[1];
     if (component) {
+      if (accentOnly) return;
       if (rule.nodes.length !== Object.keys(component).length || rule.nodes.some((decl) => decl.type !== 'decl' || decl.important || decl.value !== `var(${component[decl.prop]})`)) throw new Error(`Unexpected add-on component: ${rule.selector}`);
       return;
     }
@@ -328,20 +365,25 @@ export function checkNuStyle(css, flavor, reportException = console.log) {
       if (!decl.prop.startsWith('--nuui-')) throw new Error(`Unexpected add-on declaration: ${decl.prop}`);
       return [decl.prop.slice(7), decl.value];
     }));
-    for (const [foreground, background] of nuContrastPairs()) {
+    for (const [foreground, background] of accentOnly ? accentNuContrastPairs : allNuContrastPairs) {
       const ratio = contrastRatio(values.get(foreground), values.get(background));
       minimum = Math.min(minimum, ratio);
       const floor = nuContrastFloor(flavor, foreground, background);
       if (ratio < floor) throw new Error(`${flavor} new design contrast: ${foreground} / ${background}: ${ratio.toFixed(2)}:1 < ${floor}:1`);
       if (ratio < 3) exceptions.add(`${flavor.includes('/') ? flavor : `${flavor}/mauve`} contrast exception: ${foreground} / ${background}: ${ratio.toFixed(3)}:1 >= 2.5:1`);
     }
+    if (accentOnly) { rules++; return; }
     const order = ['bg-canvas-backdrop', 'bg-canvas-default', 'bg-default', 'bg-floating'];
     for (let index = 1; index < order.length; index++) {
       const before = luminance(parseColor(values.get(order[index - 1]), order[index - 1]));
       const after = luminance(parseColor(values.get(order[index]), order[index]));
       if (before > after) throw new Error(`${flavor} new design neutral order: ${order[index - 1]} / ${order[index]}`);
     }
-    if (values.get('bg-ghost-hover') === values.get('bg-ghost-active')) throw new Error('New design hover/active surfaces must differ');
+    for (const [left, right] of nuDistinctSurfaces) {
+      const a = parseColor(values.get(left), left);
+      const b = parseColor(values.get(right), right);
+      if (a.every((channel, index) => channel === b[index])) throw new Error(`New design surfaces must differ: ${left} / ${right}`);
+    }
     rules++;
   });
   if (rules !== 4) throw new Error(`Expected four add-on root/body rules, got ${rules}`);
@@ -367,6 +409,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       const ordering = checkNeutralOrder(css, flavor);
       checkOverrides(css);
       checkErrorPageExclusion(css);
+      console.log(checkTooltipContrast(css, flavor));
       const contrast = checkDisabledContrast(css, flavor);
       if (contrast) console.log(contrast);
       console.log(`${flavor}: PASS (${count} custom-property assignments)`);

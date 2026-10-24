@@ -5,7 +5,7 @@ import postcss from 'postcss';
 import selectorParser from 'postcss-selector-parser';
 import { selectorSpecificity, compare } from '@csstools/selector-specificity';
 import { errorPageGuard, legacyGuard, newDesignGuard, sharedTokenScope, legacyOverrideScope, newDesignTokenScope } from '../scripts/guards.mjs';
-import { checkErrorPageExclusion, checkNuStyle, nuContrastPairs } from '../scripts/compile.mjs';
+import { checkErrorPageExclusion, checkNuStyle, nuContrastPairs, nuDistinctSurfaces, checkTooltipContrast } from '../scripts/compile.mjs';
 import { coverageSets, missingAssignments } from '../scripts/coverage.mjs';
 import { inspectCSS } from '../scripts/source.mjs';
 import { findLiterals } from '../scripts/literals.mjs';
@@ -62,7 +62,11 @@ function validNu() {
   entries.set('bg-canvas-backdrop', '#ccc');
   entries.set('bg-canvas-default', '#ddd');
   entries.set('bg-floating', '#fff');
+  entries.set('bg-ghost-hover', '#ccc');
   entries.set('bg-ghost-active', '#eee');
+  entries.set('bg-subtle', '#fff');
+  entries.set('bg-disabled', '#ddd');
+  entries.set('bg-canvas-default', '#eee');
   const declarations = [...entries].map(([name, value]) => `--nuui-${name}:${value}`).join(';');
   return postcss.parse(['', ' body', '.dark-mode', '.dark-mode body'].map((mode) => `${newDesignTokenScope}${mode} {${declarations}}`).join('\n'));
 }
@@ -75,7 +79,7 @@ test('add-on checks reject unreadable semantic, marker and navigation pairs and 
     assert.throws(() => checkNuStyle(css, 'latte'), /contrast/);
   }
   const flat = validNu();
-  flat.first.nodes.find((decl) => decl.prop === '--nuui-bg-ghost-active').value = '#fff';
+  flat.first.nodes.find((decl) => decl.prop === '--nuui-bg-ghost-active').value = '#ccc';
   assert.throws(() => checkNuStyle(flat, 'latte'), /must differ/);
   const order = validNu();
   order.first.nodes.find((decl) => decl.prop === '--nuui-bg-canvas-default').value = '#000';
@@ -146,6 +150,15 @@ test('Latte solid contrast exceptions retain a strict 2.5 floor and leave other 
   assert.throws(() => checkNuStyle(fixture, 'latte'), /< 2.5:1/);
 });
 
+
+test('every hosting surface stays distinct from ghost hover and disabled', () => {
+  for (const [left, right] of nuDistinctSurfaces) {
+    const css = validNu();
+    css.first.nodes.find((decl) => decl.prop === `--nuui-${left}`).value = css.first.nodes.find((decl) => decl.prop === `--nuui-${right}`).value;
+    assert.throws(() => checkNuStyle(css, 'mocha'), /must differ/);
+  }
+});
+
 test('each userstyle declares the same new-design marker once', async () => {
   const { newDesignMarker } = await import('../scripts/guards.mjs');
   for (const style of [source, main]) {
@@ -153,4 +166,45 @@ test('each userstyle declares the same new-design marker once', async () => {
     assert.equal(style.split(newDesignMarker).length - 1, 1);
     assert.ok(style.includes('@{newDesignMarker}'));
   }
+});
+
+test('tooltip contrast checks defaults, every variant, and missing pairs at 3:1', () => {
+  const selectors = ['', '.dark-mode'].flatMap((mode) => ['', ...['success', 'info', 'danger', 'error', 'warning'].map((name) => ` .simptip-${name}`)].map((suffix) => `${sharedTokenScope}${mode}${suffix}`));
+  const css = postcss.parse(selectors.map((selector) => `${selector} {--tooltip-base-color:#fff;--tooltipBaseColor:#fff;--tooltip-text-color:#111}`).join('\n'));
+  assert.match(checkTooltipContrast(css, 'latte'), /PASS/);
+  for (const rule of css.nodes) {
+    const bad = css.clone();
+    bad.nodes[css.nodes.indexOf(rule)].last.value = '#999';
+    assert.throws(() => checkTooltipContrast(bad, 'mocha'), /< 3:1/);
+  }
+  css.last.remove();
+  assert.throws(() => checkTooltipContrast(css, 'latte'), /Missing/);
+});
+
+
+test('only Latte solid success tooltip can use the 2.5 contrast floor', () => {
+  const fixture = () => postcss.parse(['', '.dark-mode'].flatMap((mode) => ['', ...['success', 'info', 'danger', 'error', 'warning'].map((name) => ` .simptip-${name}`)].map((suffix) => `${sharedTokenScope}${mode}${suffix} {--tooltip-base-color:#fff;--tooltipBaseColor:#fff;--tooltip-text-color:#111}`)).join('\n'));
+  for (const flavor of ['latte', 'mocha']) {
+    for (const variant of ['success', 'info', 'danger', 'error', 'warning']) {
+      const css = fixture();
+      css.nodes.find((rule) => rule.selector.endsWith(` .simptip-${variant}`)).last.value = '#999';
+      const messages = [];
+      if (flavor === 'latte' && variant === 'success') {
+        assert.match(checkTooltipContrast(css, flavor, (message) => messages.push(message)), /PASS/);
+        assert.match(messages.join('\n'), /tooltip success.*2\.849:1 >= 2\.5:1/);
+        css.nodes.find((rule) => rule.selector.endsWith(' .simptip-success')).last.value = '#aaa';
+        assert.throws(() => checkTooltipContrast(css, flavor), /< 2.5:1/);
+      } else assert.throws(() => checkTooltipContrast(css, flavor), /< 3:1/);
+    }
+  }
+});
+
+
+test('accent sweep checks only accent-dependent contrast pairs', () => {
+  const css = validNu();
+  css.first.nodes.find((decl) => decl.prop === '--nuui-bg-floating').value = '#000';
+  css.first.nodes.find((decl) => decl.prop === '--nuui-text-on-warning').value = '#fff';
+  assert.match(checkNuStyle(css, 'mocha/green', () => {}, true), /PASS/);
+  css.first.nodes.find((decl) => decl.prop === '--nuui-text-on-primary').value = '#fff';
+  assert.throws(() => checkNuStyle(css, 'mocha/green', () => {}, true), /contrast/);
 });

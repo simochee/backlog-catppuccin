@@ -36,8 +36,9 @@ test('CLI checks execute from a path containing spaces and URL-encoded character
     .fixture() when (@flavor = latte) { ${assignments('latte')} }
     .fixture() when not (@flavor = latte) { ${assignments('mocha')} }
     .theme(@flavor) { .fixture(); }
-    ${sharedTokenScope} { .theme(@lightFlavor); }
-    ${sharedTokenScope}.dark-mode { .theme(@darkFlavor); }
+    .tooltips() { each(success info danger error warning, { .simptip-@{value} { --tooltip-base-color:#fff; --tooltipBaseColor:#fff; --tooltip-text-color:#111; } }); }
+    ${sharedTokenScope} { .tooltips(); .theme(@lightFlavor); }
+    ${sharedTokenScope}.dark-mode { .tooltips(); .theme(@darkFlavor); }
     ${legacyDarkScope} .button--primary.is_disabled, ${legacyDarkScope} .button--primary[disabled] { background-color: #333; }`);
   const nuAssignments = [...new Set(nuContrastPairs().flat())].map((name) =>
     `--nuui-${name}: ${name.startsWith('bg-') ? '#ffffff' : '#000000'};`).join(' ');
@@ -48,7 +49,10 @@ test('CLI checks execute from a path containing spaces and URL-encoded character
       --nuui-bg-canvas-backdrop: #000;
       --nuui-bg-canvas-default: #ddd;
       --nuui-bg-floating: #fff;
-      --nuui-bg-ghost-active: #eee;
+      --nuui-bg-ghost-hover: #ccc;
+      --nuui-bg-ghost-active: #aaa;
+      --nuui-bg-subtle: #fff;
+      --nuui-bg-disabled: #ddd;
     }
     ${newDesignTokenScope} { .nu(@lightFlavor); body { .nu(@lightFlavor); } }
     ${newDesignTokenScope}.dark-mode { .nu(@darkFlavor); body { .nu(@darkFlavor); } }`);
@@ -99,6 +103,7 @@ function surfaceValues(flavor = 'latte') {
     ['--borderColorDefault', '#bbbbbb'],
     ['--iconColorWeak', '#777777'],
     ['--textColorWeak', '#aaaaaa'],
+    ['--tooltip-base-color', '#fff'], ['--tooltipBaseColor', '#fff'], ['--tooltip-text-color', '#111'],
   ]);
 }
 
@@ -145,7 +150,7 @@ test('latte rejects completely flat neutral surfaces', () => {
 });
 
 test('neutral ordering names missing properties', () => {
-  for (const name of Object.keys(surfaceValues()).filter((name) => !['--iconColorWeak', '--textColorWeak'].includes(name))) {
+  for (const name of Object.keys(surfaceValues()).filter((name) => !['--iconColorWeak', '--textColorWeak'].includes(name) && !name.startsWith('--tooltip'))) {
     const values = surfaceValues();
     delete values[name];
     assert.throws(() => checkNeutralOrder(surfaces(values), 'latte'), (error) => error.message.includes(name));
