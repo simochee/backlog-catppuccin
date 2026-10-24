@@ -8,6 +8,7 @@ export const pageURL = process.env.BACKLOG_PAGE_URL || 'https://simochee.backlog
 export async function download(url, allow404 = false, skip404 = false) {
   const response = await fetch(url, { redirect: 'error', signal: AbortSignal.timeout(30000) });
   if (skip404 && response.status === 404) {
+    await response.body?.cancel();
     console.error(`Warning: skipped missing stylesheet: ${url}`);
     return null;
   }
@@ -20,7 +21,7 @@ export async function download(url, allow404 = false, skip404 = false) {
   return bytes.toString('utf8');
 }
 
-export function stylesheetURLs(html) {
+export function stylesheetURLs(html, speculativeURLs = new Set()) {
   const urls = new Set();
   for (const link of html.matchAll(/<link\b[^>]*>/gi)) {
     const attrs = Object.fromEntries([...link[0].matchAll(/([\w-]+)\s*=\s*["']([^"']*)["']/g)]
@@ -42,9 +43,12 @@ export function stylesheetURLs(html) {
       'styles/Common.css', 'styles/ReactApp.css', 'styles/Kanban.css',
       'styles/Wiki.css', 'styles/Git.css', 'styles/Documents.css',
       'react/static/css/index.css', 'react/global-bar/static/css/main.css',
-    ]) urls.add(new URL(path, base).href);
+    ]) {
+      const candidate = new URL(path, base).href;
+      if (!urls.has(candidate)) speculativeURLs.add(candidate);
+    }
   }
-  return [...urls];
+  return [...new Set([...urls, ...speculativeURLs])];
 }
 
 export function validateStylesheetURL(input) {
@@ -90,9 +94,10 @@ export function inspectCSS(css) {
 
 export async function loadStylesheets(extraURLs = []) {
   const validatedExtras = extraURLs.filter(Boolean).map(validateStylesheetURL);
-  const urls = [...new Set([...stylesheetURLs(await download(pageURL, true)), ...validatedExtras])];
+  const speculativeURLs = new Set();
+  const urls = [...new Set([...stylesheetURLs(await download(pageURL, true), speculativeURLs), ...validatedExtras])];
   const stylesheets = await Promise.all(urls.map(async (url) => {
-    const css = await download(url, false, !validatedExtras.includes(url));
+    const css = await download(url, false, speculativeURLs.has(url) && !validatedExtras.includes(url));
     if (css === null) return null;
     console.error(`Source: ${url}`);
     return { url, css };

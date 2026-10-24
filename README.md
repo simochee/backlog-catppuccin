@@ -72,8 +72,9 @@ subtask chips and migration-card links are restored separately by hand.
 The extractor discovers stylesheet URLs at runtime from the public error page
 at `https://simochee.backlog.com/this-page-does-not-exist`, then adds the Common,
 ReactApp, Kanban, Wiki, Git, Documents, React index and global-bar bundles from
-the discovered version path; it never signs in. Missing discovered bundles
-(HTTP 404) are skipped with a warning; other fetch failures remain errors.
+the discovered version path; it never signs in. Missing speculative bundles
+(HTTP 404) are skipped with a warning; linked stylesheets, extra URLs, and other
+fetch failures remain errors.
 Set `BACKLOG_PAGE_URL` to override the discovery page (relative stylesheet links
 are resolved against that URL). Discovered stylesheets outside HTTPS
 `assets.backlog.com` are skipped with a warning on stderr.
