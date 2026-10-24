@@ -227,8 +227,41 @@ export function checkSharedContrast(css, modes) {
 const sharedVisualSelector = (selector) => ['', '.dark-mode'].some((mode) =>
   [...sharedVisualProperties.keys()].some((suffix) => selector === `${sharedTokenScope}${mode} ${suffix}`));
 const overrideAllowlist = [
-  ...['input-text', 'input-password', 'textarea'].map((name) => ({
-    selector: new RegExp(`^${flavoredScope}${escapeSelector(`.${name}:not(.is_error, .errInput, .is_disabled, [disabled]):not(:focus)`)}$`),
+  ...[
+    '.input-text',
+    '.input-password',
+    '.textarea',
+    'textarea.errInput',
+    '.input-radio + label::before',
+    '.input-checkbox:not(:checked) + label::before',
+    '.input-switch + label::after',
+    '.selectbox',
+    '.selectbox__item',
+    '.selectbox--multiple__wrapper',
+    '.chzn-container-multi .chzn-choices',
+    '.chzn-container-single .chzn-single',
+    '.chosen-wrapper .chzn-container .chzn-drop',
+    '.select2-drop-mask',
+    '.select2-results .select2-highlighted ul',
+    '.select2-results .select2-ajax-error',
+    '.select2-results .select2-no-results',
+    '.select2-results .select2-searching',
+    '.select2-results .select2-selection-limit',
+    '.select2-results .select2-disabled',
+    '.select2-more-results',
+    '.select2-container .select2-choice',
+    '.select2-container-multi .select2-choices',
+    '.select2-drop',
+    '[class*="_chznDrop_"]',
+    '[class*="_triggerButton_"]',
+    '[class*="_checkbox_"]:not(.-checked)::before',
+    '.search-box__input',
+    '[class*="_searchBox__input_"]',
+    '[class*="_searchBoxInput_"]',
+    '[class*="_selectListButton_"]',
+    '.branch-switch-box .dropdown-box__content .branch-switch-dialog-filter',
+  ].map((selector) => ({
+    selector: new RegExp(`^${flavoredScope}${escapeSelector(selector)}$`),
     property: 'background-color', value: new RegExp(`^${color}$`, 'i'), important: false,
   })),
   ...[...sharedVisualProperties].flatMap(([selector, properties]) => properties.map((property) => ({

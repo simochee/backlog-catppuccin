@@ -23,15 +23,15 @@ function target(decl, flavor) {
   if (marker) return ['tint', markers[marker]];
   const role = decl.prop.match(/^--nuui-(?:text|icon)-(danger|info|success|warning|link|primary)$/)?.[1];
   if (role) {
-    const accent = decl.parent.nodes.find((node) => node.prop === '--nuui-bg-primary-default')?.value;
+    const accent = decl.parent.nodes.find((node) => node.prop === '--nuui-bg-primary-shape')?.value;
     const hue = {danger:'red', info:'blue', success:'green', warning:'yellow'}[role] ||
       Object.keys(palettes[flavor]).find((name) => palettes[flavor][name] === accent);
     return ['tint', hue];
   }
   if (['--commonColorYellow', '--filesActionColor', '--statusColor-5', '--warningColorScaleAccent'].includes(decl.prop)) return ['fill', 'yellow'];
   if (decl.prop === '--commonColorPink') return ['fill', 'pink'];
-  if (['--defaultColorAccent', '--defaultColorMain'].includes(decl.prop)) {
-    const accent = decl.parent.nodes.find((node) => node.prop === '--defaultColorLink')?.value;
+  if (['--defaultColorAccent', '--defaultColorMain', '--nuui-bg-primary-default'].includes(decl.prop)) {
+    const accent = decl.parent.nodes.find((node) => node.prop === (decl.prop.startsWith('--nuui-') ? '--nuui-bg-primary-shape' : '--defaultColorLink'))?.value;
     return ['fill', Object.keys(palettes[flavor]).find((name) => palettes[flavor][name] === accent)];
   }
   if (decl.prop === '--warningColorScaleText') return ['warning', 'yellow'];

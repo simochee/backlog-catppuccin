@@ -119,7 +119,7 @@ test('image/color type parity follows discovered gradients and aliases in both d
 test('guarded navigation and migration rules use only approved role tokens', async () => {
   const { compile, nuComponentTokens } = await import('../scripts/compile.mjs');
   const palette = ['rosewater', 'flamingo', 'pink', 'mauve', 'red', 'maroon', 'peach', 'yellow', 'green', 'teal', 'blue', 'sapphire', 'sky', 'lavender', 'subtext0', 'subtext1', 'overlay0', 'overlay1', 'overlay2', 'surface0', 'surface1', 'surface2', 'mantle', 'base', 'crust', 'text', 'accent'];
-  const shades = {base: '#eeeeee', mantle: '#dddddd', crust: '#cccccc', text: '#111111', accent: '#aa4444'};
+  const shades = {base: '#eeeeee', mantle: '#dddddd', crust: '#cccccc', text: '#111111', accent: '#aa4444', mauve: '#aa4444'};
   const library = `#lib { .palette() {${palette.map((name) => `@${name}: ${shades[name] || '#888888'};`).join('')}} }`;
   const css = postcss.parse((await compile('latte', source, library, 'mocha')).css);
   css.walkRules((rule) => { if (!rule.selector.startsWith(newDesignTokenScope)) rule.remove(); });
