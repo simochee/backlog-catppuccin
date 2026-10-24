@@ -81,24 +81,46 @@ test('compiled override validation enforces dark-only text and light-only board 
   }
 });
 
+test('neutral project navigation is excluded from both patterns, including descendants and contexts', () => {
+  const sidebar = ['.project-nav', '.project-nav__back', '.project-nav-list__text',
+    '.project-nav-list__link#navi-document .project-nav-list__beta',
+    '.project-nav-ai-pr:hover', '.project-nav-list__link:is(.is_active, :hover) .label'];
+  const css = sidebar.map((selector) => `${selector} {color:var(--backgroundColorSchemeBase);background:var(--defaultColorMain)}
+    .dark-mode ${selector} {${primary} !important}`).join('\n');
+  const result = findDarkText([`${css} @media print {${css}}
+    .project-navigation {color:var(--backgroundColorSchemeBase)}
+    .dark-mode .project-navigation {${primary}}`]);
+  assert.deepEqual(result.a, ['.project-navigation']);
+  assert.deepEqual(result.b, []);
+  assert.equal(result.overrides.length, 1);
+  assert.equal(result.overrides[0].selector, '.dark-mode .project-navigation');
+});
+
+test('sidebar exclusion identifies classes rather than similar names or attribute values', () => {
+  const selectors = ['.project-navigation', '.project-navlist', '[data-label=".project-nav"]'];
+  const css = selectors.map((selector) => `${selector} {color:var(--backgroundColorSchemeBase)}
+    .dark-mode ${selector} {${primary}}`).join('\n');
+  assert.deepEqual(patterns([css]), { a: selectors, b: [] });
+});
+
 test('site state specificity keeps winning and only site important declarations stay important', () => {
-  const site = `.project-nav-list__text, .pill {color:var(--backgroundColorSchemeBase)}
-    .dark-mode  .project-nav-list__text {${primary}}
-    .dark-mode .project-nav-list__link:is(.is_active, :hover) .project-nav-list__text {${primary}}
+  const site = `.menu__text, .pill {color:var(--backgroundColorSchemeBase)}
+    .dark-mode  .menu__text {${primary}}
+    .dark-mode .menu__link:is(.is_active, :hover) .menu__text {${primary}}
     .dark-mode .pill {${primary} !important}`;
   const result = findDarkText([site]);
   const block = renderDarkText(result);
-  assert.match(block, /\.dark-mode \.project-nav-list__text/);
+  assert.match(block, /\.dark-mode \.menu__text/);
   const rules = [];
   postcss.parse(block.replaceAll(/^[ \t]*\/\/.*$/gm, '')).walkRules((rule) => rules.push(rule));
-  const normal = rules.find((rule) => rule.selector.includes('project-nav-list__text'));
+  const normal = rules.find((rule) => rule.selector.includes('menu__text'));
   assert.equal(Boolean(normal.first.important), false);
   assert.ok(rules.find((rule) => rule.selector === '.dark-mode .pill').first.important);
   assert.ok(!block.includes(':root'));
   const matching = [];
   postcss.parse(`${site}\n${block.replaceAll(/^[ \t]*\/\/.*$/gm, '')}`).walkRules((rule) => {
     for (const selector of postcss.list.comma(rule.selector)) {
-      if (selector.endsWith('.project-nav-list__text')) matching.push({ selector, decl: rule.first });
+      if (selector.endsWith('.menu__text')) matching.push({ selector, decl: rule.first });
     }
   });
   matching.sort((x, y) => compare(selectorSpecificity(selectorParser().astSync(x.selector)), selectorSpecificity(selectorParser().astSync(y.selector))));

@@ -20,6 +20,18 @@ function normalizeSelector(selector) {
   }
 }
 
+function usesNeutralSidebar(selector) {
+  let found = false;
+  try {
+    selectorParser().astSync(selector).walkClasses(({ value }) => {
+      if (/^project-nav(?:$|[-_])/.test(value)) found = true;
+    });
+  } catch {
+    // Keep unsupported selectors available to the advisory conflict report.
+  }
+  return found;
+}
+
 export function findDarkText(stylesheets) {
   const records = new Map();
   const nonDarkColors = new Set();
@@ -34,7 +46,8 @@ export function findDarkText(stylesheets) {
         const original = normalizeSelector(input);
         const dark = /^\.dark-mode\s+/.test(original);
         const selector = dark ? original.replace(/^\.dark-mode\s+/, '') : original;
-        if (selector.includes('.dark-mode')) continue;
+        // The sidebar uses neutral surfaces rather than project accent fills.
+        if (usesNeutralSidebar(selector) || selector.includes('.dark-mode')) continue;
         const key = JSON.stringify([context, selector]);
         const record = records.get(key) || { selector, context, darkRules: new Map() };
         for (const decl of rule.nodes) {
