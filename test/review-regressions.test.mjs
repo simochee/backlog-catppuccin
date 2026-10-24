@@ -31,7 +31,7 @@ for (const [flavor, css] of compiled) {
         inputs++;
       }
       if (rule.selector.endsWith(' body.Page--view-kanban .card')) {
-        assert.equal(rule.first.value, 'var(--backgroundColorPrimary)');
+        assert.equal(rule.first.value, 'var(--backgroundColorSchemeBase)');
         cards++;
       }
     });

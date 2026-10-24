@@ -210,7 +210,7 @@ test('override allowlist preserves token overrides and custom assignments', () =
     :root { --example: #abc; }
     ${legacyDarkScope} .example { color: var(--backgroundColorSchemeBase); }
     ${legacyDarkScope} .pill--square.-subtasking { color: var(--textColorWeak); }
-    ${legacyScope}:not(.dark-mode) body.Page--view-kanban .card { background-color: var(--backgroundColorPrimary); }
+    ${legacyScope}:not(.dark-mode) body.Page--view-kanban .card { background-color: var(--backgroundColorSchemeBase); }
   `)));
 });
 

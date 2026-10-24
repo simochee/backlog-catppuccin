@@ -78,8 +78,8 @@ test('generated block is stable, deduplicated, and replacement leaves surroundin
 });
 
 test('compiled override validation enforces dark-only text and light-only board scope', () => {
-  checkOverrides(postcss.parse(`${legacyDarkScope} .pill--square.-subtasking {color:var(--textColorWeak)} ${legacyDarkScope} .text {color:var(--backgroundColorSchemeBase)} ${legacyDarkScope} .pill {color:var(--backgroundColorSchemeBase)!important} ${legacyScope}:not(.dark-mode) body.Page--view-kanban .card {background-color:var(--backgroundColorPrimary)}`));
-  for (const css of ['.dark-mode .other {color:var(--textColorWeak)}', '.pill {color:var(--backgroundColorSchemeBase)!important}', ':root:root:root:root:root.dark-mode .pill {color:var(--backgroundColorSchemeBase)}', '.card {background-color:var(--backgroundColorPrimary)}']) {
+  checkOverrides(postcss.parse(`${legacyDarkScope} .pill--square.-subtasking {color:var(--textColorWeak)} ${legacyDarkScope} .text {color:var(--backgroundColorSchemeBase)} ${legacyDarkScope} .pill {color:var(--backgroundColorSchemeBase)!important} ${legacyScope}:not(.dark-mode) body.Page--view-kanban .card {background-color:var(--backgroundColorSchemeBase)}`));
+  for (const css of ['.dark-mode .other {color:var(--textColorWeak)}', '.pill {color:var(--backgroundColorSchemeBase)!important}', ':root:root:root:root:root.dark-mode .pill {color:var(--backgroundColorSchemeBase)}', '.card {background-color:var(--backgroundColorSchemeBase)}']) {
     assert.throws(() => checkOverrides(postcss.parse(css)), /Unexpected color override/);
   }
 });
