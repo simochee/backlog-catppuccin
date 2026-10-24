@@ -81,10 +81,10 @@ test('compiled override validation enforces dark-only text and light-only board 
   }
 });
 
-test('neutral project navigation is excluded from both patterns, including descendants and contexts', () => {
+test('project navigation subjects are excluded from both patterns across contexts', () => {
   const sidebar = ['.project-nav', '.project-nav__back', '.project-nav-list__text',
     '.project-nav-list__link#navi-document .project-nav-list__beta',
-    '.project-nav-ai-pr:hover', '.project-nav-list__link:is(.is_active, :hover) .label'];
+    '.project-nav-ai-pr:hover'];
   const css = sidebar.map((selector) => `${selector} {color:var(--backgroundColorSchemeBase);background:var(--defaultColorMain)}
     .dark-mode ${selector} {${primary} !important}`).join('\n');
   const result = findDarkText([`${css} @media print {${css}}
@@ -94,6 +94,17 @@ test('neutral project navigation is excluded from both patterns, including desce
   assert.deepEqual(result.b, []);
   assert.equal(result.overrides.length, 1);
   assert.equal(result.overrides[0].selector, '.dark-mode .project-navigation');
+});
+
+test('accent descendants of project navigation are emitted and excluded subjects remain conflict candidates', () => {
+  const result = findDarkText([`
+    .dark-mode .project-nav .pill {${primary}; background-color:var(--defaultColorMain)}
+    .pill.project-nav-list__text:hover {${primary}}
+    .dark-mode .pill.project-nav-list__text:hover {${primary}; background-color:var(--defaultColorMain)}
+  `]);
+  assert.deepEqual(result.b, ['.project-nav .pill']);
+  assert.deepEqual(result.overrides.map(({ selector }) => selector), ['.dark-mode .project-nav .pill']);
+  assert.ok(result.conflicts.some(({ selector }) => selector === '.pill.project-nav-list__text:hover'));
 });
 
 test('sidebar exclusion identifies classes rather than similar names or attribute values', () => {

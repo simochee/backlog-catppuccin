@@ -13,27 +13,23 @@ const accentColor = /^var\(\s*--(?:defaultColor(?:Main|Accent)|statusColor-[\w-]
 
 function normalizeSelector(selector) {
   try {
-    return selectorParser().processSync(selector, { lossless: false });
+    const ast = selectorParser().astSync(selector, { lossless: false });
+    return { selector: ast.toString(), ast };
   } catch {
     // Unsupported syntax must not make the advisory conflict report fatal.
-    return selector;
+    return { selector, ast: null };
   }
 }
 
-function usesNeutralSidebar(selector) {
-  let found = false;
-  try {
-    selectorParser().astSync(selector).walkClasses(({ value }) => {
-      if (/^project-nav(?:$|[-_])/.test(value)) found = true;
-    });
-  } catch {
-    // Keep unsupported selectors available to the advisory conflict report.
-  }
-  return found;
+function excludesSidebarSubject(ast) {
+  const nodes = ast?.first?.nodes || [];
+  const subject = nodes.slice(nodes.findLastIndex((node) => node.type === 'combinator') + 1);
+  return subject.some((node) => node.type === 'class' && /^project-nav(?:$|[-_])/.test(node.value));
 }
 
 export function findDarkText(stylesheets) {
   const records = new Map();
+  const parsedSelectors = new Map();
   const nonDarkColors = new Set();
   for (const css of stylesheets) {
     postcss.parse(css, { from: undefined, map: false }).walkRules((rule) => {
@@ -43,13 +39,13 @@ export function findDarkText(stylesheets) {
         context.unshift([parent.name, parent.params]);
       }
       for (const input of postcss.list.comma(rule.selector)) {
-        const original = normalizeSelector(input);
+        const { selector: original, ast } = normalizeSelector(input);
+        parsedSelectors.set(original, ast);
         const dark = /^\.dark-mode\s+/.test(original);
         const selector = dark ? original.replace(/^\.dark-mode\s+/, '') : original;
-        // The sidebar uses neutral surfaces rather than project accent fills.
-        if (usesNeutralSidebar(selector) || selector.includes('.dark-mode')) continue;
+        if (selector.includes('.dark-mode')) continue;
         const key = JSON.stringify([context, selector]);
-        const record = records.get(key) || { selector, context, darkRules: new Map() };
+        const record = records.get(key) || { selector, context, excluded: excludesSidebarSubject(ast), darkRules: new Map() };
         for (const decl of rule.nodes) {
           if (decl.type !== 'decl') continue;
           const value = decl.value.trim();
@@ -72,14 +68,15 @@ export function findDarkText(stylesheets) {
   }
   const a = new Set();
   const b = new Set();
-  for (const [key, { lightBase, darkPrimary, accent }] of records) {
+  for (const [key, { lightBase, darkPrimary, accent, excluded }] of records) {
+    if (excluded) continue;
     if (lightBase && darkPrimary) a.add(key);
     else if (darkPrimary && accent) b.add(key);
   }
   // Titles explicitly reset their text color while sharing the card's surface.
   // Require an exact parent selector and matching scale tokens, not any ancestor.
   for (const [key, record] of records) {
-    if (!record.darkPrimary || !record.scaleText || !record.selector.endsWith(' .title')) continue;
+    if (record.excluded || !record.darkPrimary || !record.scaleText || !record.selector.endsWith(' .title')) continue;
     const [context] = JSON.parse(key);
     const parentSelector = record.selector.slice(0, -' .title'.length);
     const parent = records.get(JSON.stringify([context, parentSelector]));
@@ -93,7 +90,8 @@ export function findDarkText(stylesheets) {
   const inspect = (selector) => {
     if (!metadata.has(selector)) {
       try {
-        const ast = selectorParser().astSync(selector);
+        const ast = parsedSelectors.get(selector);
+        if (!ast) throw new Error('Unsupported selector syntax');
         const blocks = new Set();
         // Conservative BEM overlap includes descendants; state/modifier classes
         // alone do not identify a component block.
