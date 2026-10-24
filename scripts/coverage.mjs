@@ -1,6 +1,6 @@
 import { pathToFileURL } from 'node:url';
 import { readFile } from 'node:fs/promises';
-import { download, loadStylesheets, inspectCSS } from './source.mjs';
+import { download, loadStylesheets, inspectCSS, discoveredColorNames } from './source.mjs';
 import { compile, libraryURL, checkNuTokenTypes } from './compile.mjs';
 import postcss from 'postcss';
 
@@ -14,8 +14,7 @@ export function missingAssignments(names, source) {
 export function discoverCoverage(stylesheets) {
   if (!stylesheets.some(({ url }) => new URL(url).pathname.includes('/styles_nu-ui/'))) throw new Error('No styles_nu-ui/ bundles discovered for coverage and type parity');
   const discovered = inspectCSS(stylesheets.map(({ css }) => css).join('\n'));
-  if (!discovered.names.length) throw new Error('No color variables discovered for coverage');
-  if (![...discovered.names, ...discovered.composites].some((name) => name.startsWith('--nuui-'))) throw new Error('No --nuui-* tokens discovered for coverage and type parity');
+  discoveredColorNames(discovered, { requireNu: true });
   return discovered;
 }
 
@@ -29,7 +28,7 @@ export function coverageSets({ names, composites }) {
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
     const discovered = discoverCoverage(await loadStylesheets(process.argv.slice(2)));
-    const extracted = { ...discovered, names: discovered.names.filter((name) => !discovered.composites.includes(name)) };
+    const extracted = { ...discovered, names: discoveredColorNames(discovered, { requireNu: true }) };
     const sets = coverageSets(extracted);
     for (const [label, file, names] of [
       ['Legacy', 'catppuccin.user.less', sets.legacy],

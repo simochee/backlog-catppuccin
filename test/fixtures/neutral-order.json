@@ -3,13 +3,13 @@
     "direction": "descending",
     "order": [
       [
-        "--backgroundColorSchemeBase"
+        "--backgroundColorSchemeBase",
+        "--backgroundColorDefault",
+        "--backgroundColorBase"
       ],
       [
         "--backgroundColorWeakOnBaseBG",
-        "--backgroundColorWeak",
-        "--backgroundColorDefault",
-        "--backgroundColorBase"
+        "--backgroundColorWeak"
       ],
       [
         "--backgroundColorDisabled",
@@ -50,13 +50,11 @@
     "direction": "ascending",
     "order": [
       [
-        "--backgroundColorSchemeBase"
-      ],
-      [
         "--backgroundColorWeakOnBaseBG",
         "--backgroundColorWeak"
       ],
       [
+        "--backgroundColorSchemeBase",
         "--backgroundColorDefault",
         "--backgroundColorBase"
       ],

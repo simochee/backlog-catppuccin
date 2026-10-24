@@ -25,11 +25,13 @@
       #catppuccin(@lightFlavor);
       body { #catppuccin(@lightFlavor); }
       #tooltips(@lightFlavor);
+      #shared(@lightFlavor);
     }
     :root:root:root:root:root:where(:not(:has(> body.Page--error))).dark-mode {
       #catppuccin(@darkFlavor);
       body { #catppuccin(@darkFlavor); }
       #tooltips(@darkFlavor);
+      #shared(@darkFlavor);
     }
     :root:root:root:root:root:where(:not(:has(> body.Page--error), @{newDesignMarker})) {
       #components(@lightFlavor);
@@ -193,6 +195,54 @@
       });
     });
 
+    #shared(@flavor) {
+      #lib.palette();
+      ::selection { background-color: fade(@overlay2, 25%); }
+      input, textarea, [contenteditable], .CodeMirror, .ace_editor {
+        caret-color: @rosewater;
+      }
+      .prettyprint, .prettyprint.prettyprinted, .loom code.prettyprint {
+        color: @text;
+        background-color: @surface0;
+        border-color: @overlay0;
+      }
+      .prettyprint .kwd { color: @mauve; }
+      .prettyprint .str { color: if((@flavor = latte), darken(@green, 6.6%), @green); }
+      .prettyprint .atv { color: if((@flavor = latte), darken(@green, 6.6%), @green); }
+      .prettyprint .typ { color: if((@flavor = latte), darken(@yellow, 13.4%), @yellow); }
+      .prettyprint .atn { color: if((@flavor = latte), darken(@yellow, 13.4%), @yellow); }
+      .prettyprint .com { color: @overlay2; }
+      .prettyprint .pun { color: @overlay2; }
+      .prettyprint .opn { color: @overlay2; }
+      .prettyprint .clo { color: @overlay2; }
+      .prettyprint .pln { color: @text; }
+      .prettyprint .lit { color: if((@flavor = latte), darken(@peach, 12.1%), @peach); }
+      .prettyprint .tag { color: @mauve; }
+      .prettyprint .dec { color: if((@flavor = latte), darken(@rosewater, 18%), @rosewater); }
+      .prettyprint .var { color: @text; }
+      .prettyprint .fun { color: @blue; }
+      .prettyprint .linenums { color: @overlay1; }
+      .prettyprint .linenums li:nth-child(even) { background-color: @surface1; }
+      .Code-table .Code-table_content_separator, .Code-table .Code-table_content_separator td,
+      .Code-split-table .Line-src.separator {
+        color: @peach;
+        background-color: @surface0;
+      }
+      .code-view__header { color: @pink; }
+      .Code-table .Line-number span { color: @overlay1; }
+      .pill--default, .pill-inline-list__item-link, .tab-buttons__pill,
+      .wiki-tag-list__count, .filter-nav.-wiki-tag .filter-nav__link {
+        background-color: @surface0;
+        color: @subtext1;
+      }
+      .pill--default:hover, .pill-inline-list__item-link:hover,
+      .filter-nav.-wiki-tag .filter-nav__link:is(:hover, :focus, .is_active) {
+        background-color: @surface1;
+        color: @text;
+      }
+      .filter-nav.-wiki-tag .filter-nav__link .filter-nav__num { color: @subtext0; }
+    }
+
     #tooltips(@flavor) {
       #lib.palette();
       @darkInk: if((@flavor = latte), @text, @crust);
@@ -202,7 +252,7 @@
         @lightRatio: ((max(luma(@background), luma(@lightInk)) + 5%) / (min(luma(@background), luma(@lightInk)) + 5%));
         --tooltipBaseColor: @background !important;
         --tooltip-base-color: @background !important;
-        --tooltip-text-color: if((@darkRatio > @lightRatio), @darkInk, @lightInk) !important;
+        --tooltip-text-color: if((((max(luma(@background), luma(@base)) + 5%) / (min(luma(@background), luma(@base)) + 5%)) >= 3), @base, if((@darkRatio > @lightRatio), @darkInk, @lightInk)) !important;
       }
       .simptip-success { #variant(@green); }
       .simptip-info { #variant(@blue); }
@@ -211,9 +261,13 @@
     }
 
     #roles(@flavor) {
-      @projectBase: mix(@accent, @base, 20%);
-      @projectBase2: mix(@accent, @base, 8%);
-      @projectSub1: mix(@accent, @base, 50%);
+      // These tokens also paint fixed headers and overlapping step arrows; alpha would expose content.
+      @projectBase: @surface0;
+      @projectBase2: @mantle;
+      @projectSub1: @surface1;
+      @baseAccentRatio: ((max(luma(@accent), luma(@base)) + 5%) / (min(luma(@accent), luma(@base)) + 5%));
+      @textAccentRatio: ((max(luma(@accent), luma(@text)) + 5%) / (min(luma(@accent), luma(@text)) + 5%));
+      @onAccent: if((@baseAccentRatio >= 3) or (@baseAccentRatio >= @textAccentRatio), @base, @text);
       .darkContent() when (@flavor = latte) { @darkContent: @text; }
       .darkContent() when not (@flavor = latte) { @darkContent: @crust; }
       .darkContent();
@@ -221,7 +275,7 @@
       .surfaces() when (@flavor = latte) {
         // Latte runs light to dark, opposite to Backlog's dark tokens.
         @surfaceInput: @base;
-        @surfacePage: @mantle;
+        @surfacePage: @base;
         @surfaceSidebar: @crust;
         @surfaceWeak: @mantle;
         @surfaceDisabled: @crust;
@@ -232,7 +286,7 @@
         @surfaceHighlight: @surface2;
       }
       .surfaces() when not (@flavor = latte) {
-        @surfaceInput: @crust;
+        @surfaceInput: @base;
         @surfacePage: @base;
         @surfaceSidebar: @mantle;
         @surfaceWeak: @mantle;
@@ -257,8 +311,9 @@
         background-color: var(--headerAddButtonHoverBG) !important;
       }
       .global-nav .icon-button.add-item-link svg.icon {
-        fill: var(--backgroundColorSchemeBase) !important;
+        fill: var(--onAccentText) !important;
       }
+      .button--primary { color: var(--onAccentText); }
       .upgrade-info__button {
         color: var(--defaultColorAccent);
         border-color: var(--defaultColorAccent);
@@ -266,7 +321,7 @@
       .upgrade-info:hover .upgrade-info__button,
       .upgrade-info:focus-within .upgrade-info__button {
         background-color: var(--defaultColorAccent);
-        color: var(--backgroundColorSchemeBase);
+        color: var(--onAccentText);
       }
       .upgrade-bar.generic-cta-bar {
         background-image: linear-gradient(45deg, @sapphire, @teal);
@@ -331,7 +386,8 @@
 
     #catppuccin(@flavor) {
       #lib.palette();
-      --headerAddButtonHoverBG: mix(@accent, @text, 80%);
+      --headerAddButtonHoverBG: if((@flavor = latte) and (@onAccent = @base), darken(@accent, 2%), lighten(@accent, 2%));
+      --onAccentText: @onAccent;
       #roles(@flavor);
       --aiColor: @mauve;
       --aiColorHover: @mauve;
@@ -356,7 +412,7 @@
       --borderColorOnBaseElement: @surface1;
       --borderColorPrimary: @overlay0;
       --borderColorWeak: @surface0;
-      --brandColorBacklog: @green;
+      --brandColorBacklog: @accent;
       --brandColorCacoo: @blue;
       --brandColorNulab: @text;
       --brandColorTypetalk: @peach;
@@ -393,14 +449,14 @@
       --defaultColorMain: @accent;
       --defaultColorMainInverse: @base;
       --defaultColorSub-1: @projectSub1;
-      --diffColorAddedBase: fade(@green, 16%);
+      --diffColorAddedBase: fade(@green, 20%);
       --diffColorAddedBase-2: fade(@green, 16%);
       --diffColorAddedBaseHover: fade(@green, 24%);
       --diffColorAddedText: @green;
-      --diffColorChangedBase: fade(@yellow, 16%);
-      --diffColorChangedBase-2: fade(@yellow, 16%);
-      --diffColorChangedText: @yellow;
-      --diffColorDeletedBase: fade(@red, 16%);
+      --diffColorChangedBase: fade(@blue, 20%);
+      --diffColorChangedBase-2: fade(@blue, 16%);
+      --diffColorChangedText: @blue;
+      --diffColorDeletedBase: fade(@red, 20%);
       --diffColorDeletedBase-2: fade(@red, 16%);
       --diffColorDeletedBaseHover: fade(@red, 24%);
       --diffColorDeletedText: @red;
@@ -444,7 +500,7 @@
       --statusColor-other-rgb: red(@mauve), green(@mauve), blue(@mauve);
       --successColorScaleAccent: @green;
       --successColorScaleBase: fade(@green, 16%);
-      --successColorScaleText: @green;
+      --successColorScaleText: if((@flavor = latte), darken(@green, 3.7%), @green);
       --svnActionColor: @teal;
       --svnActionColor-rgb: red(@teal), green(@teal), blue(@teal);
       --textColorDefault: @text;
@@ -465,7 +521,7 @@
       }
       --warningColorScaleAccent: @yellow;
       --warningColorScaleBase: fade(@yellow, 16%);
-      --warningColorScaleText: @yellow;
+      --warningColorScaleText: if((@flavor = latte), darken(@yellow, 9.5%), @yellow);
       --wikiActionColor: @pink;
       --wikiActionColor-rgb: red(@pink), green(@pink), blue(@pink);
     }

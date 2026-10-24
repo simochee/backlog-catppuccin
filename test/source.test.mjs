@@ -1,12 +1,23 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { inspectCSS, stylesheetURLs, validateStylesheetURL } from '../scripts/source.mjs';
+import { inspectCSS, stylesheetURLs, validateStylesheetURL, discoveredColorNames } from '../scripts/source.mjs';
 import { missingAssignments } from '../scripts/coverage.mjs';
 
 test('extracts colors, aliases, fallbacks and RGB channels without dimensions', () => {
   const result = inspectCSS(':root { --ink: red; --alias: var(--ink); --fallback: var(--missing, blue); --ink-rgb: 1, 2, 3; --width: 12px; --count: 3; --gradient: linear-gradient(red, blue); --shadow: 0 2px 4px var(--ink); --gradient-alias: var(--gradient); }');
   assert.deepEqual(result.names, ['--alias', '--fallback', '--gradient', '--gradient-alias', '--ink', '--ink-rgb', '--shadow']);
   assert.deepEqual(result.composites, ['--gradient', '--gradient-alias', '--shadow']);
+});
+
+test('shared discovery validation excludes composites and requires the requested namespace', () => {
+  const discovered = inspectCSS(':root {--legacy:red;--nuui-image:linear-gradient(red,blue);--nuui-alias:var(--nuui-image);--nuui-text:blue}');
+  const snapshot = structuredClone(discovered);
+  assert.deepEqual(discoveredColorNames(discovered, { requireNu: true }), ['--legacy', '--nuui-text']);
+  assert.deepEqual(discovered, snapshot);
+  assert.deepEqual(discoveredColorNames({ names: ['--nuui-shadow'], composites: ['--nuui-shadow'] }, { requireNu: true }), []);
+  assert.throws(() => discoveredColorNames({ names: [], composites: [] }), { message: 'No color variables discovered' });
+  assert.throws(() => discoveredColorNames(inspectCSS(':root{--legacy:red}'), { requireNu: true }), { message: 'No --nuui-* color variables discovered' });
+  assert.doesNotThrow(() => discoveredColorNames(inspectCSS(':root{--legacy:red}')));
 });
 
 test('discovers versioned stylesheet URLs and rejects other sources', () => {

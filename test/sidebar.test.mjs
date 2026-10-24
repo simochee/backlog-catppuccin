@@ -9,7 +9,7 @@ const library = `#lib() { .palette() {
   @base: #eeeeee; @mantle: #dddddd; @crust: #cccccc;
   @surface0: #bbbbbb; @surface1: #aaaaaa; @surface2: #999999;
   @text: #111111; @subtext1: #222222; @subtext0: #333333;
-  @overlay0: #444444; @overlay1: #555555;
+  @overlay0: #444444; @overlay1: #555555; @overlay2: #666666; @rosewater: #bb8888;
   @accent: #8833aa; @mauve: @accent; @sapphire: @accent; @teal: @accent;
   @green: @accent; @blue: @accent; @red: @accent; @peach: @accent;
   @yellow: @accent; @pink: @accent; @flamingo: @accent;

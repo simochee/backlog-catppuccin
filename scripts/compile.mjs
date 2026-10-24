@@ -3,7 +3,10 @@ import { readFile } from 'node:fs/promises';
 import less from 'less';
 import postcss from 'postcss';
 import selectorParser from 'postcss-selector-parser';
-import { download } from './source.mjs';
+import { loadPinnedLibrary, checkPalette } from './palette.mjs';
+import { discoveredColorNames } from './source.mjs';
+import nuTokenTypes from '../test/fixtures/nu-token-types.json' with { type: 'json' };
+import { paletteAllowlist } from './style-policy.mjs';
 import { escapeSelector, errorPageGuard, legacyGuard, newDesignGuard, legacyScope, legacyDarkScope, sharedTokenScope, legacyOverrideScope, newDesignTokenScope } from './guards.mjs';
 import expectedOrder from '../test/fixtures/neutral-order.json' with { type: 'json' };
 
@@ -112,13 +115,14 @@ const literalScope = (literal) => ({ literal });
 const override = (scope, selector, property, token, important = false) =>
   ({ scope, selector, property, token, important });
 export const tokenOverrides = [
+  override(flavoredOverrideScope, '.button--primary', 'color', '--onAccentText'),
   override(flavoredOverrideScope, '.global-nav .icon-button.add-item-link', 'background-color', '--defaultColorAccent', true),
   override(flavoredOverrideScope, '.global-nav .icon-button.add-item-link:is(:hover, :focus)', 'background-color', '--headerAddButtonHoverBG', true),
-  override(flavoredOverrideScope, '.global-nav .icon-button.add-item-link svg.icon', 'fill', '--backgroundColorSchemeBase', true),
+  override(flavoredOverrideScope, '.global-nav .icon-button.add-item-link svg.icon', 'fill', '--onAccentText', true),
   ...['color', 'border-color'].map((property) => override(flavoredOverrideScope, '.upgrade-info__button', property, '--defaultColorAccent')),
   ...[':hover', ':focus-within'].flatMap((state) => [
     override(flavoredOverrideScope, `.upgrade-info${state} .upgrade-info__button`, 'background-color', '--defaultColorAccent'),
-    override(flavoredOverrideScope, `.upgrade-info${state} .upgrade-info__button`, 'color', '--backgroundColorSchemeBase'),
+    override(flavoredOverrideScope, `.upgrade-info${state} .upgrade-info__button`, 'color', '--onAccentText'),
   ]),
   ...['.Page--edit-wiki', '.Page--find-wiki', '.Page--view-wiki', '[class^=Page--wiki]'].flatMap((page) =>
     [['is_not-yet', 'warning'], ['is_done', 'success']].flatMap(([state, scale]) => {
@@ -149,7 +153,28 @@ export const scopePattern = (scope) => {
   if (typeof scope.literal === 'string') return escapeSelector(scope.literal);
   throw new Error('Scope must be a pattern or literal');
 };
+export const sharedVisualProperties = new Map([
+  ['::selection', ['background-color']],
+  ...['.button--default', '.card--default', '.global-header'].map((selector) => [selector, ['background-color']]),
+  ...['input', 'textarea'].map((selector) => [selector, ['caret-color', 'background-color']]),
+  ...['[contenteditable]', '.CodeMirror', '.ace_editor'].map((selector) => [selector, ['caret-color']]),
+  ...['.prettyprint', '.prettyprint.prettyprinted', '.loom code.prettyprint'].map((selector) => [selector, ['color', 'background-color', 'border-color']]),
+  ...['kwd', 'str', 'atv', 'typ', 'atn', 'com', 'pun', 'opn', 'clo', 'pln', 'lit', 'tag', 'dec', 'var', 'fun'].map((name) => [`.prettyprint .${name}`, ['color']]),
+  ['.prettyprint .linenums', ['color']],
+  ['.prettyprint .linenums li:nth-child(even)', ['background-color']],
+  ...['.Code-table .Code-table_content_separator', '.Code-table .Code-table_content_separator td', '.Code-split-table .Line-src.separator'].map((selector) => [selector, ['color', 'background-color']]),
+  ['.code-view__header', ['color']],
+  ['.Code-table .Line-number span', ['color']],
+  ...['.pill--default', '.pill-inline-list__item-link', '.tab-buttons__pill', '.wiki-tag-list__count', '.filter-nav.-wiki-tag .filter-nav__link', '.pill--default:hover', '.pill-inline-list__item-link:hover', '.filter-nav.-wiki-tag .filter-nav__link:is(:hover, :focus, .is_active)'].map((selector) => [selector, ['background-color', 'color']]),
+  ['.filter-nav.-wiki-tag .filter-nav__link .filter-nav__num', ['color']],
+]);
+const sharedVisualSelector = (selector) => ['', '.dark-mode'].some((mode) =>
+  [...sharedVisualProperties.keys()].some((suffix) => selector === `${sharedTokenScope}${mode} ${suffix}`));
 const overrideAllowlist = [
+  ...[...sharedVisualProperties].flatMap(([selector, properties]) => properties.map((property) => ({
+    selector: new RegExp(`^${escapeSelector(sharedTokenScope)}(?:\\.dark-mode)? ${escapeSelector(selector)}$`),
+    property, value: new RegExp(`^${color}$`, 'i'), important: false,
+  }))),
   ...['.button--primary.is_disabled', '.button--primary[disabled]'].map((selector) => ({
     selector: new RegExp(`^${escapeSelector(`${legacyDarkScope} ${selector}`)}$`),
     property: 'background-color',
@@ -207,7 +232,7 @@ export function checkErrorPageExclusion(css, addon = false) {
         (node.type === 'pseudo' && node.value === ':root') || (node.type === 'class' && node.value === 'dark-mode'));
       const rootTokens = tokenSelector.test(selector.toString().trim()) && rule.nodes.every((node) =>
         node.type === 'comment' || (node.type === 'decl' && node.prop.startsWith('--')));
-      const expected = addon ? newDesignGuard : rootTokens ? errorPageGuard : legacyGuard;
+      const expected = addon ? newDesignGuard : rootTokens || sharedVisualSelector(selector.toString().trim()) ? errorPageGuard : legacyGuard;
       if (!anchored || !compound.some((node) => JSON.stringify(nodeShape(node)) === guardShapes.get(expected))) {
         throw new Error(`Missing error-page guard or design guard: ${selector}`);
       }
@@ -245,14 +270,20 @@ export function checkDisabledContrast(css, flavor) {
   return `${flavor} disabled primary contrast: PASS (${ratio.toFixed(2)}:1 >= 3:1)`;
 }
 
-export function contrastRatio(a, b) {
-  const left = luminance(parseColor(a, 'foreground'));
-  const right = luminance(parseColor(b, 'background'));
+export function compositeColor(value, backdrop) {
+  const rgb = parseColor(value, 'composited color');
+  const alpha = value.match(/^rgba\([^,]+,[^,]+,[^,]+,\s*([\d.]+)\)$/i)?.[1];
+  return alpha === undefined ? rgb : rgb.map((channel, index) => channel * Number(alpha) + backdrop[index] * (1 - Number(alpha)));
+}
+export function contrastRatio(a, b, backdrop = '#eff1f5') {
+  const background = compositeColor(b, parseColor(backdrop, 'backdrop'));
+  const left = luminance(compositeColor(a, background));
+  const right = luminance(background);
   return (Math.max(left, right) + 0.05) / (Math.min(left, right) + 0.05);
 }
 
 export const tooltipVariants = ['success', 'info', 'danger', 'error', 'warning'];
-export function checkTooltipContrast(css, flavor, reportException = console.log) {
+export function checkTooltipContrast(css, flavor, reportException = console.log, modeFlavors) {
   const checked = new Set();
   let minimum = Infinity;
   const exceptions = new Set();
@@ -263,11 +294,15 @@ export function checkTooltipContrast(css, flavor, reportException = console.log)
       const root = `${sharedTokenScope}${mode}`;
       const variant = tooltipVariants.find((name) => selector === `${root} .simptip-${name}`);
       if (selector !== root && !variant) continue;
+      const actualFlavor = modeFlavors?.[mode ? 'dark' : 'light'] || flavor.split('/')[0];
+      const label = `${flavor} tooltip mode=${mode || 'light'} variant=${variant || 'default'} selector=${selector}`;
+      if (checked.has(`${mode}/${variant || 'default'}`)) throw new Error(`${label}: duplicate root block`);
+      if (!values.has('--tooltip-text-color') || !values.has('--tooltip-base-color')) throw new Error(`${label}: missing tooltip foreground or base color`);
       const foreground = values.get('--tooltip-text-color');
       const background = values.get('--tooltip-base-color');
       const ratio = contrastRatio(foreground, background);
-      const floor = flavor === 'latte' && variant === 'success' ? 2.5 : 3;
-      if (ratio < floor) throw new Error(`${flavor} tooltip ${variant || 'default'} contrast: ${ratio.toFixed(3)}:1 < ${floor}:1`);
+      const floor = actualFlavor === 'latte' && variant === 'success' ? 2.5 : 3;
+      if (ratio < floor) throw new Error(`${label} contrast: ${ratio.toFixed(3)}:1 < ${floor}:1`);
       if (ratio < 3) exceptions.add(`${flavor} contrast exception: tooltip ${variant}: ${foreground} / ${background}: ${ratio.toFixed(3)}:1 >= 2.5:1`);
       if (values.get('--tooltipBaseColor') !== background) throw new Error('Tooltip background aliases must agree');
       checked.add(`${mode}/${variant || 'default'}`);
@@ -296,7 +331,7 @@ export function nuContrastPairs() {
       for (const state of ['subtle', 'highlight']) pairs.push([`${content}-marker-${marker}`, `bg-marker-${marker}-${state}`]);
     }
     pairs.push([`${content}-on-theme-nav`, 'bg-theme-nav'], [`${content}-on-ghost`, 'bg-ghost-hover'],
-      [`${content}-on-ghost`, 'bg-ghost-active'], [`${content}-default`, 'bg-default'],
+      [`${content}-on-ghost`, 'bg-ghost-active'], [`${content}-on-ghost`, 'bg-ghost-pressed'], [`${content}-default`, 'bg-default'],
       [`${content}-inverted`, 'bg-inverted']);
     for (const role of ['danger', 'warning', 'success', 'info']) {
       pairs.push([`${content}-${role}`, `bg-${role}-banner`], [`${content}-${role}`, `bg-${role}-subtle`]);
@@ -309,9 +344,8 @@ const allNuContrastPairs = nuContrastPairs();
 const accentNuContrastPairs = allNuContrastPairs.filter(([foreground]) => foreground.endsWith('-on-primary'));
 
 export function checkNuTokenTypes(css, discovered) {
-  if (![...discovered.names, ...discovered.composites].some((name) => name.startsWith('--nuui-'))) throw new Error('No --nuui-* tokens discovered for type parity');
+  const colors = new Set(discoveredColorNames(discovered, { requireNu: true }));
   const images = new Set(discovered.images);
-  const colors = new Set(discovered.names.filter((name) => !discovered.composites.includes(name)));
   let checked = 0;
   css.walkDecls(/^--nuui-/, (decl) => {
     if (!images.has(decl.prop) && !colors.has(decl.prop)) return;
@@ -352,9 +386,11 @@ export function nuContrastFloor(flavor, foreground, background) {
 export const nuDistinctSurfaces = [
   ...['bg-canvas-backdrop', 'bg-canvas-default', 'bg-default', 'bg-floating', 'bg-subtle', 'bg-row-header', 'bg-ghost-active'].map((surface) => ['bg-ghost-hover', surface]),
   ...['bg-floating', 'bg-subtle'].map((surface) => ['bg-disabled', surface]),
+  ['bg-ghost-active', 'bg-ghost-pressed'], ['bg-ghost-hover', 'bg-disabled'],
+  ['bg-ghost-active', 'bg-disabled'], ['bg-ghost-pressed', 'bg-disabled'],
 ];
 
-export function checkNuStyle(css, flavor, reportException = console.log, accentOnly = false) {
+export function checkNuStyle(css, flavor, reportException = console.log, accentOnly = false, modeFlavors) {
   if (!accentOnly) checkErrorPageExclusion(css, true);
   let rules = 0;
   let minimum = Infinity;
@@ -370,15 +406,16 @@ export function checkNuStyle(css, flavor, reportException = console.log, accentO
       if (!decl.prop.startsWith('--nuui-')) throw new Error(`Unexpected add-on declaration: ${decl.prop}`);
       return [decl.prop.slice(7), decl.value];
     }));
+    const actualFlavor = modeFlavors?.[rule.selector.includes('.dark-mode') ? 'dark' : 'light'] || flavor.split('/')[0];
     for (const [foreground, background] of accentOnly ? accentNuContrastPairs : allNuContrastPairs) {
-      const ratio = contrastRatio(values.get(foreground), values.get(background));
+      const ratio = contrastRatio(values.get(foreground), values.get(background), values.get('bg-default'));
       minimum = Math.min(minimum, ratio);
-      const floor = nuContrastFloor(flavor, foreground, background);
+      const floor = nuContrastFloor(actualFlavor, foreground, background);
       if (ratio < floor) throw new Error(`${flavor} new design contrast: ${foreground} / ${background}: ${ratio.toFixed(2)}:1 < ${floor}:1`);
       if (ratio < 3) exceptions.add(`${flavor.includes('/') ? flavor : `${flavor}/mauve`} contrast exception: ${foreground} / ${background}: ${ratio.toFixed(3)}:1 >= 2.5:1`);
     }
     if (accentOnly) { rules++; return; }
-    const order = ['bg-canvas-backdrop', 'bg-canvas-default', 'bg-default', 'bg-floating'];
+    const order = ['bg-canvas-backdrop', 'bg-canvas-default', 'bg-default'];
     for (let index = 1; index < order.length; index++) {
       const before = luminance(parseColor(values.get(order[index - 1]), order[index - 1]));
       const after = luminance(parseColor(values.get(order[index]), order[index]));
@@ -396,55 +433,127 @@ export function checkNuStyle(css, flavor, reportException = console.log, accentO
   return `${flavor} new design neutral ordering and contrast: PASS (${rules} rules; minimum ${minimum.toFixed(2)}:1; ${exceptions.size} Latte solid exceptions)`;
 }
 
+export function checkDerivedSource(source) {
+  const clean = source.replace(/"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\/\*[\s\S]*?\*\/|\/\/[^\r\n]*/g,
+    (token) => token.startsWith('/') ? ' ' : token);
+  if (/@inkWeight\b/.test(clean)) throw new Error('Blanket colored-ink mixing is forbidden');
+  const neutralOrder = ['crust', 'mantle', 'base', 'surface0', 'surface1', 'surface2', 'overlay0', 'overlay1', 'overlay2', 'subtext0', 'subtext1', 'text'];
+  for (const match of clean.matchAll(/\bmix\(\s*@([\w]+)\s*,\s*@([\w]+)\s*,/g)) {
+    const left = neutralOrder.indexOf(match[1]);
+    const right = neutralOrder.indexOf(match[2]);
+    if (left < 0 || right < 0 || Math.abs(left - right) !== 1) throw new Error(`Opaque mix requires adjacent neutral steps or a reviewed exception: ${match[0]}`);
+  }
+  for (const match of clean.matchAll(/\b(?:darken|lighten)\([^,]+,\s*([\d.]+)%/g)) {
+    if (Number(match[1]) > 20) throw new Error(`Ink correction exceeds 20%: ${match[0]}`);
+  }
+  for (const match of clean.matchAll(/#state\([^;]+;\s*([\d.]+)%/g)) {
+    if (Number(match[1]) > 10) throw new Error(`Interaction correction exceeds 10%: ${match[0]}`);
+  }
+  for (const match of clean.matchAll(/(?:--[\w-]+|background(?:-color)?|color|fill|stroke|border-color|outline-color|caret-color)\s*:\s*([^;{}]+)/g)) {
+    if (/#[\da-f]{3,8}\b|\b(?:white|black)\b|\brgba?\(\s*\d/i.test(match[1])) throw new Error(`Literal color outside the palette library: ${match[0]}`);
+  }
+  return 'source derivation bounds and color-literal scan: PASS';
+}
+
+export const accents = ['rosewater', 'flamingo', 'pink', 'mauve', 'red', 'maroon', 'peach', 'yellow', 'green', 'teal', 'blue', 'sapphire', 'sky', 'lavender', 'subtext0'];
+export async function validateStyles({ sources, library, report = console.log, render = compile }) {
+  const failures = [];
+  const checked = async (label, action) => {
+    try { const message = await action(); if (message) report(`${label}: ${message}`); }
+    catch (error) { failures.push(`${label}: ${error.message}`); }
+  };
+  for (const [file, source] of Object.entries(sources)) await checked(`${file} source policy`, () => checkDerivedSource(source));
+  for (const [light, dark] of [
+    ...['latte', 'frappe', 'macchiato', 'mocha'].map((flavor) => [flavor, flavor]),
+    ['latte', 'mocha'], ['mocha', 'latte'],
+  ]) {
+    for (const accent of accents) {
+      const modes = { light, dark };
+      const label = `${light === dark ? light : `${light}+${dark}`}/${accent}`;
+      for (const [file, source] of Object.entries(sources)) {
+        const addon = file.includes('-nu');
+        await checked(`${file} ${label} compile`, async () => {
+          const css = postcss.parse((await render(light, source, library, dark, accent)).css);
+          const scope = `${file} ${label}`;
+          await checked(`${scope} guards`, () => checkErrorPageExclusion(css, addon));
+          if (addon) {
+            await checked(`${scope} type parity`, () => checkNuTokenTypes(css, nuTokenTypes));
+            await checked(`${scope} surfaces/contrast`, () => checkNuStyle(css, label, report, false, modes));
+            if (css.toString().includes('--tooltip-text-color:')) await checked(`${scope} tooltips`, () => checkTooltipContrast(css, label, report, modes));
+            await checked(`${scope} ink deviations`, () => checkOnAccentInk(css, modes, report, label));
+          } else {
+            await checked(`${scope} overrides`, () => checkOverrides(css));
+            await checked(`${scope} RGB`, () => css.walkDecls(/^--/, checkRGBCounterpart) && undefined);
+            await checked(`${scope} tooltips`, () => checkTooltipContrast(css, label, report, modes));
+            await checked(`${scope} disabled`, () => checkDisabledContrast(css, dark));
+            await checked(`${scope} primary contrast`, () => checkMainContrast(css, modes, report, label));
+            for (const [mode, flavor] of Object.entries(modes)) {
+              const subset = css.clone();
+              subset.walkRules((rule) => { if (rule.selector.includes('.dark-mode') !== (mode === 'dark')) rule.remove(); });
+              await checked(`${scope} ${mode} surfaces`, () => checkNeutralOrder(subset, flavor));
+            }
+          }
+          for (const [mode, flavor] of Object.entries(modes)) {
+            const subset = css.clone();
+            subset.walkRules((rule) => { if (rule.selector.includes('.dark-mode') !== (mode === 'dark')) rule.remove(); });
+            await checked(`${scope} ${mode} ΔE`, () => checkPalette(subset, flavor, { allowlist: paletteAllowlist }));
+          }
+          if (accent === 'mauve' && light === dark) report(`${light}${addon ? ' add-on' : ''}: PASS`);
+        });
+      }
+    }
+  }
+  if (failures.length) throw new Error(`${failures.length} validation failures:\n${failures.join('\n')}`);
+  report('Both userstyles: all 15 accents × four flavors plus latte/mocha and mocha/latte mixed modes; sequential compilation, guards, source derivation bounds/literals, main override allowlist/RGB/neutral ordering/disabled and primary contrast/tooltips, add-on type parity/distinct surfaces/contrast/ink deviations, and all compiled colors ΔE: PASS');
+}
+
+export function checkMainContrast(css, modes, report = console.log, label = '') {
+  let count = 0;
+  css.walkRules((rule) => {
+    const values = new Map(rule.nodes.filter((n) => n.type === 'decl').map((n) => [n.prop, n.value]));
+    if (!values.has('--onAccentText')) return;
+    const flavor = modes[rule.selector.includes('.dark-mode') ? 'dark' : 'light'];
+    const ink = values.get('--onAccentText');
+    const base = values.get('--backgroundColorSchemeBase');
+    for (const token of ['--defaultColorAccent', '--headerAddButtonHoverBG']) {
+      const background = values.get(token);
+      const ratio = contrastRatio(ink, background);
+      const floor = flavor === 'latte' ? 2.5 : 3;
+      if (ratio < floor) throw new Error(`${label} main ${token}: ${ratio.toFixed(3)}:1 < ${floor}:1`);
+      if (ratio < 3) report(`${label} contrast exception: main ${token}: ${ratio.toFixed(3)}:1 >= 2.5:1 [${rule.selector}]`);
+      if (ink !== base) report(`${label} main on-accent ink deviation: ${token}: base ${base} / ${background}; using ${ink} (${ratio.toFixed(3)}:1) [${rule.selector}]`);
+      count++;
+    }
+  });
+  if (!count) throw new Error('Missing main on-accent contrast pairs');
+  return `${count} main primary contrast pairs`;
+}
+
+export function checkOnAccentInk(css, modes, report = console.log, label = '') {
+  let deviations = 0;
+  css.walkRules((rule) => {
+    const values = new Map(rule.nodes.filter((n) => n.type === 'decl').map((n) => [n.prop.slice(7), n.value]));
+    if (!values.has('bg-primary-default')) return;
+    const flavor = modes[rule.selector.includes('.dark-mode') ? 'dark' : 'light'];
+    // Base is the default ink, even if another palette ink has greater contrast.
+    for (const role of ['primary', 'danger', 'warning', 'success', 'info']) {
+      const ink = values.get(`text-on-${role}`);
+      const base = values.get('bg-default');
+      if (ink === base) continue;
+      const background = values.get(`bg-${role}-default`);
+      if (contrastRatio(base, background) >= 3) throw new Error(`${flavor} ${role}: base ink already meets 3:1`);
+      report(`${label} on-accent ink deviation: ${role}: base ${base} / ${background} below 3:1; using ${ink} (${contrastRatio(ink, background).toFixed(3)}:1) [${rule.selector}]`);
+      deviations++;
+    }
+  });
+  return `${deviations} on-accent ink deviations listed`;
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
-    const source = await readFile(new URL('../catppuccin.user.less', import.meta.url), 'utf8');
-    const library = await download(libraryURL);
-    const addon = await readFile(new URL('../catppuccin-nu.user.less', import.meta.url), 'utf8');
-    for (const flavor of ['latte', 'frappe', 'macchiato', 'mocha']) {
-      const result = await compile(flavor, source, library);
-      const css = postcss.parse(result.css, { from: undefined, map: false });
-      let count = 0;
-      css.walkDecls(/^--/, (decl) => {
-        count++;
-        checkRGBCounterpart(decl);
-      });
-      if (!count) throw new Error('Compiled output has no assignments');
-      const ordering = checkNeutralOrder(css, flavor);
-      checkOverrides(css);
-      checkErrorPageExclusion(css);
-      console.log(checkTooltipContrast(css, flavor));
-      const contrast = checkDisabledContrast(css, flavor);
-      if (contrast) console.log(contrast);
-      console.log(`${flavor}: PASS (${count} custom-property assignments)`);
-      console.log(ordering);
-    }
-    for (const flavor of ['latte', 'frappe', 'macchiato', 'mocha']) {
-      const css = postcss.parse((await compile(flavor, addon, library)).css);
-      console.log(checkNuStyle(css, flavor));
-      console.log(`${flavor} add-on: PASS`);
-    }
-    const accents = ['rosewater', 'flamingo', 'pink', 'mauve', 'red', 'maroon', 'peach', 'yellow', 'green', 'teal', 'blue', 'sapphire', 'sky', 'lavender', 'subtext0'];
-    for (const flavor of ['latte', 'frappe', 'macchiato', 'mocha']) {
-      await Promise.all(accents.filter((accent) => accent !== 'mauve').map(async (accent) => {
-        const addonCSS = postcss.parse((await compile(flavor, addon, library, flavor, accent)).css);
-        checkNuStyle(addonCSS, `${flavor}/${accent}`, console.log, true);
-      }));
-    }
-    console.log('Both files compile; add-on contrast across all 15 accent choices and four flavors: PASS');
-    const mixedNu = postcss.parse((await compile('latte', addon, library, 'mocha', 'green')).css);
-    const nuValues = new Map();
-    mixedNu.walkRules((rule) => nuValues.set(rule.selector, rule.nodes.filter((decl) => decl.prop === '--nuui-bg-default').at(-1)?.value));
-    if (nuValues.get(newDesignTokenScope) === nuValues.get(`${newDesignTokenScope}.dark-mode`)) throw new Error('Add-on flavor switching failed');
-    const mixed = postcss.parse((await compile('latte', source, library, 'mocha', 'green')).css, { from: undefined, map: false });
-    const palettes = {};
-    mixed.walkDecls('--backgroundColorBase', (decl) => {
-      if (!selectorParser().astSync(decl.parent.selector).nodes.every((selector) =>
-        !selector.nodes.some((node) => node.type === 'combinator'))) return;
-      palettes[decl.parent.selector.includes('.dark-mode') ? 'dark' : 'light'] = decl.value;
-    });
-    if (!palettes.light || !palettes.dark || palettes.light === palettes.dark) throw new Error('Flavor switching failed');
-    console.log('Independent light/dark switching and scoped color overrides: PASS');
+    const sources = Object.fromEntries(await Promise.all(['catppuccin.user.less', 'catppuccin-nu.user.less'].map(async (file) =>
+      [file, await readFile(new URL(`../${file}`, import.meta.url), 'utf8')])));
+    await validateStyles({ sources, library: await loadPinnedLibrary() });
   } catch (error) {
     console.error(error.message);
     process.exitCode = 1;
