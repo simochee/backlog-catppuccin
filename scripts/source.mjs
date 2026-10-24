@@ -115,6 +115,13 @@ export async function loadStylesheets(extraURLs = []) {
 export async function extract(extraURLs = []) {
   const stylesheets = await loadStylesheets(extraURLs);
   const result = inspectCSS(stylesheets.map(({ css }) => css).join('\n'));
-  if (!result.names.length) throw new Error('No color variables discovered');
-  return { names: result.names.filter((name) => !result.composites.includes(name)), composites: result.composites, total: result.names.length };
+  return { names: discoveredColorNames(result), composites: result.composites, total: result.names.length };
+}
+
+export function discoveredColorNames({ names, composites }, { requireNu = false } = {}) {
+  const missing = !names.length ? '' : requireNu &&
+    ![...names, ...composites].some((name) => name.startsWith('--nuui-')) ? '--nuui-* ' : null;
+  if (missing !== null) throw new Error(`No ${missing}color variables discovered`);
+  const excluded = new Set(composites);
+  return names.filter((name) => !excluded.has(name));
 }
