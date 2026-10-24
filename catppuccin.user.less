@@ -147,6 +147,36 @@
     background-color: var(--backgroundColorSchemeBase);
   }
 
+  .dark-mode .Page--edit-wiki .card.-wiki-migration.is_not-yet .wiki-migration-image svg path,
+  .dark-mode .Page--find-wiki .card.-wiki-migration.is_not-yet .wiki-migration-image svg path,
+  .dark-mode .Page--view-wiki .card.-wiki-migration.is_not-yet .wiki-migration-image svg path,
+  .dark-mode [class^=Page--wiki] .card.-wiki-migration.is_not-yet .wiki-migration-image svg path {
+    fill: var(--backgroundColorSchemeBase);
+  }
+  .dark-mode .Page--edit-wiki .card.-wiki-migration.is_not-yet .button,
+  .dark-mode .Page--find-wiki .card.-wiki-migration.is_not-yet .button,
+  .dark-mode .Page--view-wiki .card.-wiki-migration.is_not-yet .button,
+  .dark-mode [class^=Page--wiki] .card.-wiki-migration.is_not-yet .button {
+    border-color: var(--backgroundColorSchemeBase);
+  }
+
+  :root:root:root:root:root:not(.dark-mode) {
+    .Page--edit-wiki .card.-wiki-migration.is_not-yet .wiki-migration-image svg path,
+    .Page--find-wiki .card.-wiki-migration.is_not-yet .wiki-migration-image svg path,
+    .Page--view-wiki .card.-wiki-migration.is_not-yet .wiki-migration-image svg path,
+    [class^=Page--wiki] .card.-wiki-migration.is_not-yet .wiki-migration-image svg path {
+      fill: var(--warningColorScaleText);
+    }
+    .Page--edit-wiki .card.-wiki-migration.is_not-yet .button,
+    .Page--find-wiki .card.-wiki-migration.is_not-yet .button,
+    .Page--view-wiki .card.-wiki-migration.is_not-yet .button,
+    [class^=Page--wiki] .card.-wiki-migration.is_not-yet .button {
+      background-color: var(--warningColorScaleAccent);
+      border-color: var(--warningColorScaleAccent);
+      color: var(--backgroundColorSchemeBase);
+    }
+  }
+
   #tooltips(@flavor) {
     #lib.palette();
     .simptip-success { --tooltipBaseColor: @green !important; }
@@ -157,6 +187,21 @@
 
   #catppuccin(@flavor) {
     #lib.palette();
+    .global-nav .icon-button.add-item-link,
+    .global-nav .icon-button.add-item-link:is(:hover, :focus) {
+      background-color: var(--defaultColorAccent) !important;
+    }
+    .global-nav .icon-button.add-item-link svg.icon {
+      fill: var(--backgroundColorSchemeBase) !important;
+    }
+    .upgrade-info__button {
+      color: var(--defaultColorAccent);
+      border-color: var(--defaultColorAccent);
+    }
+    .upgrade-info:hover .upgrade-info__button {
+      background-color: var(--defaultColorAccent);
+      color: var(--backgroundColorSchemeBase);
+    }
     .upgrade-bar.generic-cta-bar {
       background-image: linear-gradient(45deg, @sapphire, @teal);
     }

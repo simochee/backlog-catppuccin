@@ -104,7 +104,33 @@ export function checkNeutralOrder(css, flavor) {
 const flavoredScope = ':root(?::root){4}(?:\\.dark-mode)?(?: body)? ';
 const channel = '[+-]?(?:\\d*\\.)?\\d+%?';
 const color = `(?:#(?:[\\da-f]{3}|[\\da-f]{4}|[\\da-f]{6}|[\\da-f]{8})|(?:rgb|rgba|hsl|hsla)\\(\\s*${channel}(?:\\s*,\\s*|\\s+)${channel}(?:\\s*,\\s*|\\s+)${channel}(?:\\s*[,/]\\s*${channel})?\\s*\\))`;
+const escapeSelector = (selector) => selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const tokenOverrides = [
+  ...['.global-nav .icon-button.add-item-link', '.global-nav .icon-button.add-item-link:is(:hover, :focus)']
+    .map((selector) => [flavoredScope, selector, 'background-color', '--defaultColorAccent', true]),
+  [flavoredScope, '.global-nav .icon-button.add-item-link svg.icon', 'fill', '--backgroundColorSchemeBase', true],
+  ...['color', 'border-color'].map((property) => [flavoredScope, '.upgrade-info__button', property, '--defaultColorAccent', false]),
+  [flavoredScope, '.upgrade-info:hover .upgrade-info__button', 'background-color', '--defaultColorAccent', false],
+  [flavoredScope, '.upgrade-info:hover .upgrade-info__button', 'color', '--backgroundColorSchemeBase', false],
+  ...['.Page--edit-wiki', '.Page--find-wiki', '.Page--view-wiki', '[class^=Page--wiki]'].flatMap((page) => {
+    const card = `${page} .card.-wiki-migration.is_not-yet`;
+    const light = ':root:root:root:root:root:not(.dark-mode) ';
+    return [
+      [escapeSelector('.dark-mode '), `${card} .wiki-migration-image svg path`, 'fill', '--backgroundColorSchemeBase', false],
+      [escapeSelector('.dark-mode '), `${card} .button`, 'border-color', '--backgroundColorSchemeBase', false],
+      [escapeSelector(light), `${card} .wiki-migration-image svg path`, 'fill', '--warningColorScaleText', false],
+      ...['background-color', 'border-color'].map((property) => [escapeSelector(light), `${card} .button`, property, '--warningColorScaleAccent', false]),
+      [escapeSelector(light), `${card} .button`, 'color', '--backgroundColorSchemeBase', false],
+    ];
+  }),
+];
 const overrideAllowlist = [
+  ...tokenOverrides.map(([scope, selector, property, token, important]) => ({
+    selector: new RegExp(`^${scope}${escapeSelector(selector)}$`),
+    property,
+    value: new RegExp(`^var\\(${token}\\)$`),
+    important,
+  })),
   { selector: /^\.dark-mode .+$/, property: 'color', value: /^var\(--backgroundColorSchemeBase\)$/ },
   { selector: /^\.dark-mode \.pill--square\.-subtasking$/, property: 'color', value: /^var\(--textColorWeak\)$/, important: false },
   { selector: /^:root:not\(\.dark-mode\) body\.Page--view-kanban \.card$/, property: 'background-color', value: /^var\(--backgroundColorSchemeBase\)$/ },
