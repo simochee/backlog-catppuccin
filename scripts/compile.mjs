@@ -96,6 +96,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       });
       if (!count) throw new Error('Compiled output has no assignments');
       const ordering = checkNeutralOrder(css, flavor);
+      checkOverrides(css);
       console.log(`${flavor}: PASS (${count} custom-property assignments)`);
       console.log(ordering);
     }
@@ -124,7 +125,14 @@ export function checkOverrides(css) {
       decl.parent.selector === '.dark-mode .pill--square.-subtasking' && decl.value === 'var(--textColorWeak)';
     const board = decl.prop === 'background-color' &&
       selectors.length === 1 && selectors[0] === ':root:not(.dark-mode) body.Page--view-kanban .card';
-    if (!subtask && (decl.value !== 'var(--backgroundColorSchemeBase)' || !(darkText || board))) {
+    const flavoredScope = /^:root(?::root){4}(?:\.dark-mode)?(?: body)? /;
+    const cta = decl.prop === 'background-image' && selectors.every((selector) =>
+      flavoredScope.test(selector) && selector.replace(flavoredScope, '') === '.upgrade-bar.generic-cta-bar') &&
+      /^linear-gradient\(45deg, #[\da-f]+, #[\da-f]+\)$/.test(decl.value);
+    const choice = decl.prop === 'border-color' && selectors.every((selector) =>
+      flavoredScope.test(selector) && selector.replace(flavoredScope, '') === '.na-choice-box.is_active') &&
+      /^#[\da-f]+$/.test(decl.value);
+    if (!cta && !choice && !subtask && (decl.value !== 'var(--backgroundColorSchemeBase)' || !(darkText || board))) {
       throw new Error(`Unexpected color override: ${decl.parent.selector} / ${decl.prop}`);
     }
   });
