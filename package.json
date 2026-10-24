@@ -3,24 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "packageManager": "pnpm@10.34.3",
   "engines": {
-    "node": ">=24"
-  },
-  "scripts": {
-    "extract": "node scripts/extract.mjs",
-    "check:coverage": "node scripts/coverage.mjs",
-    "check:less": "node scripts/compile.mjs",
-    "generate:dark-text": "node scripts/dark-text.mjs",
-    "check:dark-text": "node scripts/dark-text.mjs --check",
-    "report:literals": "node scripts/literals.mjs",
-    "test": "node --test"
+    "node": ">=24.11.0"
   },
   "devDependencies": {
-    "@csstools/selector-specificity": "6.0.1",
-    "color-name": "2.1.0",
-    "less": "4.6.7",
-    "postcss": "8.5.31",
-    "postcss-selector-parser": "7.1.7",
-    "postcss-value-parser": "4.2.0"
+    "vite-plus": "1.4.0",
+    "@types/node": "24.19.2"
   }
 }

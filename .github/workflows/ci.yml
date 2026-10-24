@@ -23,14 +23,15 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: voidzero-dev/setup-vp@v1.22.0
         with:
-          node-version: 24
-          cache: npm
-      - run: npm ci --ignore-scripts
-      - run: npm run test
+          node-version: '24'
+          cache: true
+          cache-dependency-path: pnpm-lock.yaml
+      - run: vp check
+      - run: vp test
       - name: Compile and validate the userstyle
-        run: npm run check:less
+        run: vp run check:less
 
   # Not a required check: the result depends on Backlog's deployed CSS, so a
   # Backlog release must not block unrelated pull requests.
@@ -40,12 +41,12 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: voidzero-dev/setup-vp@v1.22.0
         with:
-          node-version: 24
-          cache: npm
-      - run: npm ci --ignore-scripts
+          node-version: '24'
+          cache: true
+          cache-dependency-path: pnpm-lock.yaml
       - name: Check legacy and new design token coverage
-        run: npm run check:coverage
-      - run: npm run check:dark-text
+        run: vp run check:coverage
+      - run: vp run check:dark-text
         if: ${{ !cancelled() }}
