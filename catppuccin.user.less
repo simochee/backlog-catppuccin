@@ -160,6 +160,12 @@
 
   #catppuccin(@flavor) {
     #lib.palette();
+    .upgrade-bar.generic-cta-bar {
+      background-image: linear-gradient(45deg, @sapphire, @teal);
+    }
+    .na-choice-box.is_active {
+      border-color: @accent;
+    }
     @projectBase: mix(@accent, @base, 20%);
     @projectBase2: mix(@accent, @base, 8%);
     @projectSub1: mix(@accent, @base, 50%);

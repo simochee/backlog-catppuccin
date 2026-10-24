@@ -5,7 +5,7 @@ import postcss from 'postcss';
 import { download } from './source.mjs';
 import expectedOrder from '../test/fixtures/neutral-order.json' with { type: 'json' };
 
-const libraryURL = 'https://userstyles.catppuccin.com/lib/std/v1.less';
+export const libraryURL = 'https://userstyles.catppuccin.com/lib/std/v1.less';
 const isRGB = (name) => /-rgb$/.test(name) || name === '--rgb-accent';
 export async function compile(flavor, source, library, darkFlavor = flavor, accentColor = 'mauve') {
   const importLine = `@import "${libraryURL}";`;
@@ -82,6 +82,17 @@ export function checkNeutralOrder(css, flavor) {
   return `${flavor} neutral ordering: PASS (${spec.direction}, ${checked} rules)`;
 }
 
+const flavoredScope = ':root(?::root){4}(?:\\.dark-mode)?(?: body)? ';
+const channel = '[+-]?(?:\\d*\\.)?\\d+%?';
+const color = `(?:#(?:[\\da-f]{3}|[\\da-f]{4}|[\\da-f]{6}|[\\da-f]{8})|(?:rgb|rgba|hsl|hsla)\\(\\s*${channel}(?:\\s*,\\s*|\\s+)${channel}(?:\\s*,\\s*|\\s+)${channel}(?:\\s*[,/]\\s*${channel})?\\s*\\))`;
+const overrideAllowlist = [
+  { selector: /^\.dark-mode .+$/, property: 'color', value: /^var\(--backgroundColorSchemeBase\)$/ },
+  { selector: /^\.dark-mode \.pill--square\.-subtasking$/, property: 'color', value: /^var\(--textColorWeak\)$/, important: false },
+  { selector: /^:root:not\(\.dark-mode\) body\.Page--view-kanban \.card$/, property: 'background-color', value: /^var\(--backgroundColorSchemeBase\)$/ },
+  { selector: new RegExp(`^${flavoredScope}\\.upgrade-bar\\.generic-cta-bar$`), property: 'background-image', value: new RegExp(`^linear-gradient\\(45deg, ${color}, ${color}\\)$`, 'i') },
+  { selector: new RegExp(`^${flavoredScope}\\.na-choice-box\\.is_active$`), property: 'border-color', value: new RegExp(`^${color}$`, 'i') },
+];
+
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
     const source = await readFile(new URL('../catppuccin.user.less', import.meta.url), 'utf8');
@@ -96,6 +107,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       });
       if (!count) throw new Error('Compiled output has no assignments');
       const ordering = checkNeutralOrder(css, flavor);
+      checkOverrides(css);
       console.log(`${flavor}: PASS (${count} custom-property assignments)`);
       console.log(ordering);
     }
@@ -106,7 +118,6 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       palettes[decl.parent.selector.includes('.dark-mode') ? 'dark' : 'light'] = decl.value;
     });
     if (!palettes.light || !palettes.dark || palettes.light === palettes.dark) throw new Error('Flavor switching failed');
-    checkOverrides(mixed);
     console.log('Independent light/dark switching and scoped color overrides: PASS');
   } catch (error) {
     console.error(error.message);
@@ -118,13 +129,9 @@ export function checkOverrides(css) {
   css.walkDecls((decl) => {
     if (decl.prop.startsWith('--')) return;
     const selectors = postcss.list.comma(decl.parent.selector);
-    const darkText = decl.prop === 'color' &&
-      selectors.every((selector) => selector.startsWith('.dark-mode '));
-    const subtask = decl.prop === 'color' && !decl.important &&
-      decl.parent.selector === '.dark-mode .pill--square.-subtasking' && decl.value === 'var(--textColorWeak)';
-    const board = decl.prop === 'background-color' &&
-      selectors.length === 1 && selectors[0] === ':root:not(.dark-mode) body.Page--view-kanban .card';
-    if (!subtask && (decl.value !== 'var(--backgroundColorSchemeBase)' || !(darkText || board))) {
+    if (!overrideAllowlist.some((entry) => entry.property === decl.prop && entry.value.test(decl.value) &&
+        (entry.important === undefined || entry.important === Boolean(decl.important)) &&
+        selectors.every((selector) => entry.selector.test(selector)))) {
       throw new Error(`Unexpected color override: ${decl.parent.selector} / ${decl.prop}`);
     }
   });

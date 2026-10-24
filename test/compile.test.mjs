@@ -7,7 +7,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { promisify } from 'node:util';
 import { execFile } from 'node:child_process';
 import postcss from 'postcss';
-import { compile, checkNeutralOrder, parseColor, checkRGBCounterpart } from '../scripts/compile.mjs';
+import { compile, checkOverrides, checkNeutralOrder, parseColor, checkRGBCounterpart } from '../scripts/compile.mjs';
 import expectedOrder from './fixtures/neutral-order.json' with { type: 'json' };
 import { blockStart, blockEnd } from '../scripts/dark-text.mjs';
 
@@ -26,7 +26,7 @@ test('CLI checks execute from a path containing spaces and URL-encoded character
   await mkdir(join(directory, 'scripts'));
   await mkdir(join(directory, 'test/fixtures'), { recursive: true });
   await copyFile(new URL('./fixtures/neutral-order.json', import.meta.url), join(directory, 'test/fixtures/neutral-order.json'));
-  for (const file of ['compile.mjs', 'coverage.mjs', 'source.mjs', 'dark-text.mjs']) {
+  for (const file of ['compile.mjs', 'coverage.mjs', 'source.mjs', 'dark-text.mjs', 'literals.mjs']) {
     await copyFile(new URL(`../scripts/${file}`, import.meta.url), join(directory, 'scripts', file));
   }
   await symlink(fileURLToPath(new URL('../node_modules', import.meta.url)), join(directory, 'node_modules'), 'dir');
@@ -46,6 +46,7 @@ test('CLI checks execute from a path containing spaces and URL-encoded character
   for (const [script, expected] of [
     ['compile', /mocha: PASS[\s\S]*Independent light\/dark switching.*PASS/],
     ['coverage', /1 assignable; 0 unassigned/],
+    ['literals', /Summary: 0 stylesheets; 0 selector groups; 0 property\/kind entries/],
   ]) {
     const { stdout } = await promisify(execFile)(process.execPath, ['--import', pathToFileURL(join(directory, 'mock-fetch.mjs')).href, join(directory, 'scripts', `${script}.mjs`)], { env: { ...process.env, BACKLOG_PAGE_URL: 'https://simochee.backlog.com/fixture-page' } });
     assert.match(stdout, expected);
@@ -55,6 +56,10 @@ test('CLI checks execute from a path containing spaces and URL-encoded character
       }
     }
   }
+  await writeFile(join(directory, 'failed-fetch.mjs'), `globalThis.fetch = async () => { throw new Error('fixture download failure'); };`);
+  await assert.rejects(promisify(execFile)(process.execPath,
+    ['--import', pathToFileURL(join(directory, 'failed-fetch.mjs')).href, join(directory, 'scripts/literals.mjs')]),
+    (error) => /Literal report failed \(load stylesheets\): fixture download failure/.test(error.stderr));
   const file = join(directory, 'catppuccin.user.less');
   await writeFile(file, `${blockStart}\n${blockEnd}`);
   await writeFile(join(directory, 'mock-dark-fetch.mjs'), `globalThis.fetch = async (url) => new Response(
@@ -151,4 +156,37 @@ test('RGB checks name mismatched and missing counterparts', () => {
   for (const declarations of ['--example: #abc; --example-rgb: 0, 0, 0;', '--example-rgb: 0, 0, 0;']) {
     assert.throws(() => postcss.parse(`:root { ${declarations} }`).walkDecls(checkRGBCounterpart), /--example/);
   }
+});
+
+const scope = ':root:root:root:root:root';
+for (const color of ['#abc', '#aabbcc', 'rgb(10, 20, 30)', 'rgba(10, 20, 30, 0.5)', 'hsl(120, 50%, 50%)', 'rgb(10 20 30 / 50%)', 'hsl(120 50% 50%)']) {
+  test(`override allowlist accepts themed colors in ${color}`, () => {
+    for (const prefix of [scope, `${scope}.dark-mode`, `${scope} body`]) {
+      assert.doesNotThrow(() => checkOverrides(postcss.parse(`
+        ${prefix} .na-choice-box.is_active { border-color: ${color}; }
+        ${prefix} .upgrade-bar.generic-cta-bar { background-image: linear-gradient(45deg, ${color}, ${color}); }
+      `)));
+    }
+  });
+}
+
+test('override allowlist rejects mismatched selectors, values and unlisted properties', () => {
+  for (const css of [
+    `${scope} .other { border-color: #abc; }`,
+    `${scope} .na-choice-box.is_active, .other { border-color: #abc; }`,
+    '.na-choice-box.is_active { border-color: #abc; }',
+    `${scope} .na-choice-box.is_active { border-color: var(--unexpected); }`,
+    `${scope} .upgrade-bar.generic-cta-bar { background-image: linear-gradient(90deg, #abc, #def); }`,
+    `${scope} .na-choice-box.is_active { color: #abc; }`,
+    '.dark-mode .pill--square.-subtasking { color: var(--textColorWeak) !important; }',
+  ]) assert.throws(() => checkOverrides(postcss.parse(css)), /Unexpected color override/);
+});
+
+test('override allowlist preserves token overrides and custom assignments', () => {
+  assert.doesNotThrow(() => checkOverrides(postcss.parse(`
+    :root { --example: #abc; }
+    .dark-mode .example { color: var(--backgroundColorSchemeBase); }
+    .dark-mode .pill--square.-subtasking { color: var(--textColorWeak); }
+    :root:not(.dark-mode) body.Page--view-kanban .card { background-color: var(--backgroundColorSchemeBase); }
+  `)));
 });

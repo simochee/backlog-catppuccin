@@ -61,6 +61,28 @@ npm run generate:dark-text
 npm run check:dark-text
 ```
 
+Report remaining literal color rules for manual triage (not a CI check):
+
+```sh
+npm run report:literals
+```
+
+The report groups selectors by stylesheet and prints property names with only
+`gradient`, `solid`, or `shadow`, followed by counts and the top 30 selectors
+ranked by component block frequency. A block is the last non-state, non-page
+class in the subject compound, with BEM element/modifier suffixes removed and
+classes inside functional pseudo-classes ignored; frequency counts selector
+groups across stylesheets. Values and downloaded rules are never stored or printed.
+Vendor bundles (tooltipster, introjs, photoswipe, smartbanner, prettify) are
+excluded. Compiled userstyle overrides exclude matching selector/property pairs
+when their appearance, conditional context and importance cover the source rule.
+Color-bearing shorthands, literal channels with variable alpha, and literal
+arguments in `color-mix()` and `light-dark()` are included. Keyframes and other
+non-selector at-rules are skipped.
+Literal fallbacks in variable references are included; URLs and `currentColor`
+are excluded. Different selectors that might overlap remain for manual review.
+The command accepts the same optional extra stylesheet URLs described below.
+
 Generated text rules retain the site's dark selector specificity and declaration
 importance, so more specific states keep their colors. Generation and freshness
 checks also print non-dark color selectors with equal or greater specificity

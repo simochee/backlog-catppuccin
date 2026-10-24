@@ -12,6 +12,7 @@
     "check:less": "node scripts/compile.mjs",
     "generate:dark-text": "node scripts/dark-text.mjs",
     "check:dark-text": "node scripts/dark-text.mjs --check",
+    "report:literals": "node scripts/literals.mjs",
     "test": "node --test"
   },
   "devDependencies": {
