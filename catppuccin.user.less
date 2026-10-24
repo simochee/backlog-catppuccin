@@ -167,41 +167,47 @@
     .darkContent() when not (@flavor = latte) { @darkContent: @crust; }
     .darkContent();
 
+    .surfaces() when (@flavor = latte) {
+      // Latte runs light to dark, opposite to Backlog's dark tokens.
+      @surfaceInput: @base;
+      @surfacePage: @mantle;
+      @surfaceWeak: @mantle;
+      @surfaceDisabled: @crust;
+      @surfaceHover: @surface0;
+      @surfaceUpdate: @surface0;
+      @surfaceRaised: @surface0;
+      @surfaceUpdateHover: @surface1;
+      @surfaceHighlight: @surface2;
+    }
+    .surfaces() when not (@flavor = latte) {
+      @surfaceInput: @crust;
+      @surfacePage: @base;
+      @surfaceWeak: @mantle;
+      @surfaceDisabled: @surface0;
+      @surfaceHover: @surface1;
+      @surfaceUpdate: @surface0;
+      @surfaceRaised: @surface0;
+      @surfaceUpdateHover: @surface1;
+      @surfaceHighlight: @surface0;
+    }
+    .surfaces();
+
     --aiColor: @mauve;
     --aiColorHover: @mauve;
     --aiIconColor: @mauve;
-    // Preserve surface depth in each flavor's neutral lightness direction.
-    .backgrounds() when (@flavor = latte) {
-      --backgroundColorSchemeBase: @base;
-      --backgroundColorSchemeBase-rgb: red(@base), green(@base), blue(@base);
-      --backgroundColorWeakOnBaseBG: @mantle;
-      --backgroundColorWeak: @mantle;
-      --backgroundColorDefault: @mantle;
-      --backgroundColorBase: @mantle;
-      --backgroundColorDisabled: @crust;
-      --backgroundColorDsabled: @crust;
-      --backgroundColorHover: @crust;
-      --backgroundColorUpdate: @crust;
-      --backgroundColorPrimary: @surface0;
-      --backgroundColorUpdateHover: @surface0;
-      --backgroundColorHighlightUpdate: @surface1;
-    }
-    .backgrounds() when not (@flavor = latte) {
-      --backgroundColorBase: @base;
-      --backgroundColorDefault: @base;
-      --backgroundColorDisabled: @surface0;
-      --backgroundColorDsabled: @surface0;
-      --backgroundColorHighlightUpdate: @surface0;
-      --backgroundColorHover: @surface1;
-      --backgroundColorPrimary: @surface0;
-      --backgroundColorSchemeBase: @crust;
-      --backgroundColorSchemeBase-rgb: red(@crust), green(@crust), blue(@crust);
-      --backgroundColorUpdate: @surface0;
-      --backgroundColorUpdateHover: @surface1;
-      --backgroundColorWeak: @mantle;
-      --backgroundColorWeakOnBaseBG: @mantle;
-    }
-    .backgrounds();
+    --backgroundColorBase: @surfacePage;
+    --backgroundColorDefault: @surfacePage;
+    --backgroundColorDisabled: @surfaceDisabled;
+    --backgroundColorDsabled: @surfaceDisabled;
+    --backgroundColorHighlightUpdate: @surfaceHighlight;
+    --backgroundColorHover: @surfaceHover;
+    --backgroundColorPrimary: @surfaceRaised;
+    --backgroundColorSchemeBase: @surfaceInput;
+    --backgroundColorSchemeBase-rgb: red(@surfaceInput), green(@surfaceInput), blue(@surfaceInput);
+    --backgroundColorUpdate: @surfaceUpdate;
+    --backgroundColorUpdateHover: @surfaceUpdateHover;
+    --backgroundColorWeak: @surfaceWeak;
+    --backgroundColorWeakOnBaseBG: @surfaceWeak;
     --borderColorAi: @mauve;
     --borderColorCardBG: @surface1;
     --borderColorDefault: @surface1;
