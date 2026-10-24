@@ -66,7 +66,9 @@ export function inspectCSS(css) {
   root.walkDecls(/^--/, (decl) => declarations.push(decl));
   const colors = new Set();
   const composites = new Set();
+  const images = new Set();
   for (const decl of declarations) {
+    if (/[\w-]+-gradient\s*\(/i.test(decl.value)) images.add(decl.prop);
     if (/gradient\s*\(/i.test(decl.value) || /(?:^|\s)-?(?:\d*\.)?\d+(?:px|rem|em)\b/i.test(decl.value) && /(?:rgba?\(|#[\da-f]|var\()/i.test(decl.value)) composites.add(decl.prop);
     let isColor = /-rgb$/.test(decl.prop) && /^\s*[\d.]+\s*,\s*[\d.]+\s*,\s*[\d.]+\s*$/.test(decl.value);
     valueParser(decl.value).walk((node) => {
@@ -84,13 +86,17 @@ export function inspectCSS(css) {
         colors.add(decl.prop);
         dependenciesChanged = true;
       }
+      if (refs.some((name) => images.has(name)) && !images.has(decl.prop)) {
+        images.add(decl.prop);
+        dependenciesChanged = true;
+      }
       if (refs.some((name) => composites.has(name)) && !composites.has(decl.prop)) {
         composites.add(decl.prop);
         dependenciesChanged = true;
       }
     }
   } while (dependenciesChanged);
-  return { names: [...colors].sort(), composites: [...composites].filter((name) => colors.has(name)).sort() };
+  return { images: [...images].sort(), names: [...colors].sort(), composites: [...composites].filter((name) => colors.has(name)).sort() };
 }
 
 export async function loadStylesheets(extraURLs = []) {

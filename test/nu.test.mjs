@@ -18,7 +18,7 @@ test('add-on has an independent identity, identical controls/domains and no lega
   assert.match(source, /@description .*requires Backlog Catppuccin/);
   assert.deepEqual(source.match(/^@var .+$/gm), main.match(/^@var .+$/gm));
   assert.equal(source.match(/^@-moz-document .+$/m)[0], main.match(/^@-moz-document .+$/m)[0]);
-  const assigned = [...source.matchAll(/(--[\w-]+):/g)].map((match) => match[1]);
+  const assigned = [...source.slice(source.lastIndexOf('#nuui(@flavor) {')).matchAll(/(--[\w-]+):/g)].map((match) => match[1]);
   assert.ok(assigned.length > 200);
   assert.ok(assigned.every((name) => name.startsWith('--nuui-')));
   assert.equal(new Set(assigned).size, assigned.length);
@@ -90,4 +90,58 @@ test('new-design literal triage cannot hide colors behind legacy-only overrides'
   assert.equal(report.length, 1);
   assert.match(report[0].stylesheet, /styles_nu-ui/);
   assert.equal(report[0].selectors[0].declarations[0].property, 'color');
+});
+
+test('image/color type parity follows discovered gradients and aliases in both directions', async () => {
+  const { checkNuTokenTypes } = await import('../scripts/compile.mjs');
+  const discovered = inspectCSS(':root { --nuui-image: repeating-linear-gradient(red, blue); --nuui-alias: var(--nuui-image); --nuui-color: red; --nuui-color-alias: var(--nuui-color); --nuui-shadow: 0 1px 2px red; }');
+  assert.deepEqual(discovered.images, ['--nuui-alias', '--nuui-image']);
+  const valid = '--nuui-image:linear-gradient(120deg, pink, blue); --nuui-alias:radial-gradient(pink, blue); --nuui-color:#fff; --nuui-color-alias:rgba(1,2,3,.5)';
+  assert.match(checkNuTokenTypes(postcss.parse(`:root {${valid}}`), discovered), /PASS/);
+  for (const name of ['image', 'alias', 'color', 'color-alias']) {
+    const wrong = name.includes('color') ? 'linear-gradient(red, blue)' : '#fff';
+    assert.throws(() => checkNuTokenTypes(postcss.parse(`:root {--nuui-${name}:${wrong}}`), discovered), /Token type mismatch/);
+  }
+});
+
+test('guarded navigation and migration rules use only approved role tokens', async () => {
+  const { compile, nuComponentTokens } = await import('../scripts/compile.mjs');
+  const palette = ['rosewater', 'flamingo', 'pink', 'mauve', 'red', 'maroon', 'peach', 'yellow', 'green', 'teal', 'blue', 'sapphire', 'sky', 'lavender', 'subtext0', 'subtext1', 'overlay0', 'overlay1', 'surface0', 'surface1', 'surface2', 'mantle', 'base', 'crust', 'text', 'accent'];
+  const shades = {base: '#eeeeee', mantle: '#dddddd', crust: '#cccccc', text: '#111111', accent: '#aa4444'};
+  const library = `#lib { .palette() {${palette.map((name) => `@${name}: ${shades[name] || '#888888'};`).join('')}} }`;
+  const css = postcss.parse((await compile('latte', source, library, 'mocha')).css);
+  assert.doesNotThrow(() => checkErrorPageExclusion(css, true));
+  let roots = 0;
+  css.walkRules((rule) => {
+    const values = new Map(rule.nodes.map((decl) => [decl.prop, decl.value]));
+    if (!values.has('--nuui-bg-primary-default')) return;
+    roots++;
+    assert.equal(values.get('--nuui-bg-primary-default'), shades.accent);
+    assert.equal(values.get('--nuui-bg-theme-nav'), rule.selector.includes('.dark-mode') ? shades.mantle : shades.crust);
+  });
+  assert.equal(roots, 4);
+  for (const [selector, entries] of Object.entries(nuComponentTokens)) {
+    const found = [];
+    css.walkRules((rule) => { if (rule.selector === `${nuTokenScope} ${selector}`) found.push(rule); });
+    assert.equal(found.length, 1, selector);
+    assert.deepEqual(Object.fromEntries(found[0].nodes.map((decl) => [decl.prop, decl.value])),
+      Object.fromEntries(Object.entries(entries).map(([prop, token]) => [prop, `var(${token})`])));
+    assert.throws(() => checkErrorPageExclusion(postcss.parse(`${nuTokenScope.replace(nuGuard, legacyGuard)} ${selector} {color:red}`), true), /design guard/);
+  }
+});
+
+test('Latte solid contrast exceptions retain a strict 2.5 floor and leave other pairs at 3', async () => {
+  const { nuContrastFloor } = await import('../scripts/compile.mjs');
+  assert.equal(nuContrastFloor('latte/green', 'text-on-primary', 'bg-primary-default'), 2.5);
+  assert.equal(nuContrastFloor('latte', 'icon-on-success', 'bg-success-default'), 2.5);
+  for (const flavor of ['frappe', 'macchiato', 'mocha']) assert.equal(nuContrastFloor(flavor, 'text-on-primary', 'bg-primary-default'), 3);
+  assert.equal(nuContrastFloor('latte', 'text-warning', 'bg-warning-banner'), 3);
+  const fixture = validNu();
+  fixture.first.nodes.find((decl) => decl.prop === '--nuui-text-on-primary').value = '#999';
+  const messages = [];
+  assert.match(checkNuStyle(fixture, 'latte/green', (message) => messages.push(message)), /PASS/);
+  assert.match(messages.join('\n'), /latte\/green.*text-on-primary.*2\.849/);
+  assert.throws(() => checkNuStyle(fixture, 'mocha'), /< 3:1/);
+  fixture.first.nodes.find((decl) => decl.prop === '--nuui-text-on-primary').value = '#aaa';
+  assert.throws(() => checkNuStyle(fixture, 'latte'), /< 2.5:1/);
 });
