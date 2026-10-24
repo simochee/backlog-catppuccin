@@ -136,16 +136,42 @@
   .dark-mode .pill--square.-subtasking {
     color: var(--textColorWeak);
   }
-  .dark-mode .Page--edit-wiki .card.-wiki-migration:is(.is_done, .is_not-yet) a,
-  .dark-mode .Page--find-wiki .card.-wiki-migration:is(.is_done, .is_not-yet) a,
-  .dark-mode .Page--view-wiki .card.-wiki-migration:is(.is_done, .is_not-yet) a,
-  .dark-mode [class^=Page--wiki] .card.-wiki-migration:is(.is_done, .is_not-yet) a {
-    color: var(--backgroundColorSchemeBase);
-  }
-
   :root:not(.dark-mode) body.Page--view-kanban .card {
     background-color: var(--backgroundColorSchemeBase);
   }
+
+  @wikiPages: ~".Page--edit-wiki", ~".Page--find-wiki", ~".Page--view-wiki", ~"[class^=Page--wiki]";
+  @wikiStates: is_not-yet warning, is_done success;
+  each(@wikiPages, .(@page) {
+    each(@wikiStates, .(@entry) {
+      @state: extract(@entry, 1);
+      @scale: extract(@entry, 2);
+      :root:root:root:root:root.dark-mode @{page} .card.-wiki-migration.@{state} {
+        a { color: var(--backgroundColorSchemeBase); }
+        .button { border-color: var(--backgroundColorSchemeBase); }
+        & when (@state = is_not-yet) {
+          .wiki-migration-image svg path { fill: var(--backgroundColorSchemeBase); }
+        }
+      }
+      :root:root:root:root:root:not(.dark-mode) @{page} .card.-wiki-migration.@{state} {
+        border-color: ~"var(--@{scale}ColorScaleAccent)";
+        & when (@state = is_not-yet) {
+          .wiki-migration-image svg path { fill: ~"var(--@{scale}ColorScaleText)"; }
+          .button {
+            background-color: ~"var(--@{scale}ColorScaleAccent)";
+            border-color: ~"var(--@{scale}ColorScaleAccent)";
+            color: var(--backgroundColorSchemeBase);
+            &:hover, &:focus, &:focus-visible {
+              background-color: var(--backgroundColorSchemeBase);
+              border-color: ~"var(--@{scale}ColorScaleAccent)";
+              color: ~"var(--@{scale}ColorScaleAccent)";
+              outline-color: ~"var(--@{scale}ColorScaleAccent)";
+            }
+          }
+        }
+      }
+    });
+  });
 
   #tooltips(@flavor) {
     #lib.palette();
@@ -157,6 +183,25 @@
 
   #catppuccin(@flavor) {
     #lib.palette();
+    --headerAddButtonHoverBG: mix(@accent, @text, 80%);
+    .global-nav .icon-button.add-item-link {
+      background-color: var(--defaultColorAccent) !important;
+    }
+    .global-nav .icon-button.add-item-link:is(:hover, :focus) {
+      background-color: var(--headerAddButtonHoverBG) !important;
+    }
+    .global-nav .icon-button.add-item-link svg.icon {
+      fill: var(--backgroundColorSchemeBase) !important;
+    }
+    .upgrade-info__button {
+      color: var(--defaultColorAccent);
+      border-color: var(--defaultColorAccent);
+    }
+    .upgrade-info:hover .upgrade-info__button,
+    .upgrade-info:focus-within .upgrade-info__button {
+      background-color: var(--defaultColorAccent);
+      color: var(--backgroundColorSchemeBase);
+    }
     .upgrade-bar.generic-cta-bar {
       background-image: linear-gradient(45deg, @sapphire, @teal);
     }
