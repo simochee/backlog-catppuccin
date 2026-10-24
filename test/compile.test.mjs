@@ -26,7 +26,7 @@ test('CLI checks execute from a path containing spaces and URL-encoded character
   await mkdir(join(directory, 'scripts'));
   await mkdir(join(directory, 'test/fixtures'), { recursive: true });
   await copyFile(new URL('./fixtures/neutral-order.json', import.meta.url), join(directory, 'test/fixtures/neutral-order.json'));
-  for (const file of ['compile.mjs', 'coverage.mjs', 'source.mjs', 'dark-text.mjs']) {
+  for (const file of ['compile.mjs', 'coverage.mjs', 'source.mjs', 'dark-text.mjs', 'literals.mjs']) {
     await copyFile(new URL(`../scripts/${file}`, import.meta.url), join(directory, 'scripts', file));
   }
   await symlink(fileURLToPath(new URL('../node_modules', import.meta.url)), join(directory, 'node_modules'), 'dir');
@@ -46,6 +46,7 @@ test('CLI checks execute from a path containing spaces and URL-encoded character
   for (const [script, expected] of [
     ['compile', /mocha: PASS[\s\S]*Independent light\/dark switching.*PASS/],
     ['coverage', /1 assignable; 0 unassigned/],
+    ['literals', /Summary: 0 stylesheets; 0 selector groups; 0 property\/kind entries/],
   ]) {
     const { stdout } = await promisify(execFile)(process.execPath, ['--import', pathToFileURL(join(directory, 'mock-fetch.mjs')).href, join(directory, 'scripts', `${script}.mjs`)], { env: { ...process.env, BACKLOG_PAGE_URL: 'https://simochee.backlog.com/fixture-page' } });
     assert.match(stdout, expected);
@@ -55,6 +56,10 @@ test('CLI checks execute from a path containing spaces and URL-encoded character
       }
     }
   }
+  await writeFile(join(directory, 'failed-fetch.mjs'), `globalThis.fetch = async () => { throw new Error('fixture download failure'); };`);
+  await assert.rejects(promisify(execFile)(process.execPath,
+    ['--import', pathToFileURL(join(directory, 'failed-fetch.mjs')).href, join(directory, 'scripts/literals.mjs')]),
+    (error) => /Literal report failed \(load stylesheets\): fixture download failure/.test(error.stderr));
   const file = join(directory, 'catppuccin.user.less');
   await writeFile(file, `${blockStart}\n${blockEnd}`);
   await writeFile(join(directory, 'mock-dark-fetch.mjs'), `globalThis.fetch = async (url) => new Response(
