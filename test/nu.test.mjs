@@ -45,9 +45,9 @@ test('structural guard check distinguishes token roots, tooltips, components and
   assert.throws(() => checkErrorPageExclusion(postcss.parse(`${sharedTokenScope} {color:red}`)), /design guard/);
   assert.doesNotThrow(() => checkErrorPageExclusion(postcss.parse(`${legacyOverrideScope} .component {color:red}`)));
   for (const guard of [errorPageGuard, legacyGuard, newDesignGuard.replace('> head > link', 'head link')]) {
-    assert.throws(() => checkErrorPageExclusion(postcss.parse(`:root${guard} {--nuui-text-default:red}`), true), /design guard/);
+    assert.throws(() => checkErrorPageExclusion(postcss.parse(`:root${guard} {--nuui-text-default:red}`), 'new'), /design guard/);
   }
-  assert.doesNotThrow(() => checkErrorPageExclusion(postcss.parse(`${newDesignTokenScope}.dark-mode body {--nuui-text-default:red}`), true));
+  assert.doesNotThrow(() => checkErrorPageExclusion(postcss.parse(`${newDesignTokenScope}.dark-mode body {--nuui-text-default:red}`), 'new'));
 });
 
 test('design guards add zero specificity and new design body beats site theme declarations', () => {
@@ -119,11 +119,11 @@ test('image/color type parity follows discovered gradients and aliases in both d
 test('guarded navigation and migration rules use only approved role tokens', async () => {
   const { compile, nuComponentTokens } = await import('../scripts/compile.mjs');
   const palette = ['rosewater', 'flamingo', 'pink', 'mauve', 'red', 'maroon', 'peach', 'yellow', 'green', 'teal', 'blue', 'sapphire', 'sky', 'lavender', 'subtext0', 'subtext1', 'overlay0', 'overlay1', 'overlay2', 'surface0', 'surface1', 'surface2', 'mantle', 'base', 'crust', 'text', 'accent'];
-  const shades = {base: '#eeeeee', mantle: '#dddddd', crust: '#cccccc', text: '#111111', accent: '#aa4444'};
+  const shades = {base: '#eeeeee', mantle: '#dddddd', crust: '#cccccc', text: '#111111', accent: '#aa4444', mauve: '#aa4444'};
   const library = `#lib { .palette() {${palette.map((name) => `@${name}: ${shades[name] || '#888888'};`).join('')}} }`;
   const css = postcss.parse((await compile('latte', source, library, 'mocha')).css);
   css.walkRules((rule) => { if (!rule.selector.startsWith(newDesignTokenScope)) rule.remove(); });
-  assert.doesNotThrow(() => checkErrorPageExclusion(css, true));
+  assert.doesNotThrow(() => checkErrorPageExclusion(css, 'new'));
   let roots = 0;
   css.walkRules((rule) => {
     const values = new Map(rule.nodes.map((decl) => [decl.prop, decl.value]));
@@ -139,7 +139,7 @@ test('guarded navigation and migration rules use only approved role tokens', asy
     assert.equal(found.length, 1, selector);
     assert.deepEqual(Object.fromEntries(found[0].nodes.map((decl) => [decl.prop, decl.value])),
       Object.fromEntries(Object.entries(entries).map(([prop, token]) => [prop, `var(${token})`])));
-    assert.throws(() => checkErrorPageExclusion(postcss.parse(`${newDesignTokenScope.replace(newDesignGuard, legacyGuard)} ${selector} {color:red}`), true), /design guard/);
+    assert.throws(() => checkErrorPageExclusion(postcss.parse(`${newDesignTokenScope.replace(newDesignGuard, legacyGuard)} ${selector} {color:red}`), 'new'), /design guard/);
   }
 });
 
