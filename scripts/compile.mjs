@@ -4,7 +4,7 @@ import less from 'less';
 import postcss from 'postcss';
 import selectorParser from 'postcss-selector-parser';
 import { download, loadStylesheets, inspectCSS } from './source.mjs';
-import { escapeSelector, errorPageGuard, legacyGuard, nuGuard, errorPageScope, darkScope, rootTokenScope, rootOverrideScope, nuTokenScope } from './guards.mjs';
+import { escapeSelector, errorPageGuard, legacyGuard, newDesignGuard, legacyScope, legacyDarkScope, sharedTokenScope, legacyOverrideScope, newDesignTokenScope } from './guards.mjs';
 import expectedOrder from '../test/fixtures/neutral-order.json' with { type: 'json' };
 
 export const libraryURL = 'https://userstyles.catppuccin.com/lib/std/v1.less';
@@ -103,8 +103,8 @@ export function checkNeutralOrder(css, flavor) {
   return `${flavor} neutral ordering: PASS (${spec.direction}, ${checked} rules)`;
 }
 
-export { errorPageGuard, errorPageGuardPattern, errorPageScope, darkScope, rootTokenScope, rootOverrideScope } from './guards.mjs';
-const flavoredScope = `${escapeSelector(rootOverrideScope)}(?:\\.dark-mode)?(?: body)? `;
+export { errorPageGuard, errorPageGuardPattern, legacyScope, legacyDarkScope, sharedTokenScope, legacyOverrideScope } from './guards.mjs';
+const flavoredScope = `${escapeSelector(legacyOverrideScope)}(?:\\.dark-mode)?(?: body)? `;
 const channel = '[+-]?(?:\\d*\\.)?\\d+%?';
 const color = `(?:#(?:[\\da-f]{3}|[\\da-f]{4}|[\\da-f]{6}|[\\da-f]{8})|(?:rgb|rgba|hsl|hsla)\\(\\s*${channel}(?:\\s*,\\s*|\\s+)${channel}(?:\\s*,\\s*|\\s+)${channel}(?:\\s*[,/]\\s*${channel})?\\s*\\))`;
 const flavoredOverrideScope = { pattern: flavoredScope };
@@ -123,8 +123,8 @@ export const tokenOverrides = [
   ...['.Page--edit-wiki', '.Page--find-wiki', '.Page--view-wiki', '[class^=Page--wiki]'].flatMap((page) =>
     [['is_not-yet', 'warning'], ['is_done', 'success']].flatMap(([state, scale]) => {
       const card = `${page} .card.-wiki-migration.${state}`;
-      const light = literalScope(`${rootOverrideScope}:not(.dark-mode) `);
-      const dark = literalScope(`${rootOverrideScope}.dark-mode `);
+      const light = literalScope(`${legacyOverrideScope}:not(.dark-mode) `);
+      const dark = literalScope(`${legacyOverrideScope}.dark-mode `);
       const accent = `--${scale}ColorScaleAccent`;
       return [
         override(dark, `${card} a`, 'color', '--backgroundColorSchemeBase'),
@@ -151,7 +151,7 @@ export const scopePattern = (scope) => {
 };
 const overrideAllowlist = [
   ...['.button--primary.is_disabled', '.button--primary[disabled]'].map((selector) => ({
-    selector: new RegExp(`^${escapeSelector(`${darkScope} ${selector}`)}$`),
+    selector: new RegExp(`^${escapeSelector(`${legacyDarkScope} ${selector}`)}$`),
     property: 'background-color',
     value: new RegExp(`^${color}$`, 'i'),
     important: false,
@@ -162,9 +162,9 @@ const overrideAllowlist = [
     value: new RegExp(`^var\\(${token}\\)$`),
     important,
   })),
-  { selector: new RegExp(`^${escapeSelector(`${darkScope} `)}.+$`), property: 'color', value: /^var\(--backgroundColorSchemeBase\)$/ },
-  { selector: new RegExp(`^${escapeSelector(`${darkScope} .pill--square.-subtasking`)}$`), property: 'color', value: /^var\(--textColorWeak\)$/, important: false },
-  { selector: new RegExp(`^${escapeSelector(`${errorPageScope}:not(.dark-mode) body.Page--view-kanban .card`)}$`), property: 'background-color', value: /^var\(--backgroundColorSchemeBase\)$/ },
+  { selector: new RegExp(`^${escapeSelector(`${legacyDarkScope} `)}.+$`), property: 'color', value: /^var\(--backgroundColorSchemeBase\)$/ },
+  { selector: new RegExp(`^${escapeSelector(`${legacyDarkScope} .pill--square.-subtasking`)}$`), property: 'color', value: /^var\(--textColorWeak\)$/, important: false },
+  { selector: new RegExp(`^${escapeSelector(`${legacyScope}:not(.dark-mode) body.Page--view-kanban .card`)}$`), property: 'background-color', value: /^var\(--backgroundColorSchemeBase\)$/ },
   { selector: new RegExp(`^${flavoredScope}${escapeSelector('.upgrade-bar.generic-cta-bar')}$`), property: 'background-image', value: new RegExp(`^linear-gradient\\(45deg, ${color}, ${color}\\)$`, 'i') },
   { selector: new RegExp(`^${flavoredScope}${escapeSelector('.na-choice-box.is_active')}$`), property: 'border-color', value: new RegExp(`^${color}$`, 'i') },
   ...[...sidebarProperties].flatMap(([selector, properties]) => properties.map((property) => ({
@@ -201,10 +201,10 @@ export function checkErrorPageExclusion(css, addon = false) {
       const compound = selector.nodes.slice(0, end < 0 ? undefined : end);
       const anchored = compound.some((node) =>
         (node.type === 'pseudo' && node.value === ':root') || (node.type === 'class' && node.value === 'dark-mode'));
-      const tokenSelector = new RegExp(`^${escapeSelector(rootTokenScope)}(?:\\.dark-mode)?(?: body)?(?: (?:\\[data-tooltip\\]|\\.message-tip|\\.simptip-(?:success|info|danger|error|warning)))?$`);
+      const tokenSelector = new RegExp(`^${escapeSelector(sharedTokenScope)}(?:\\.dark-mode)?(?: body)?(?: (?:\\[data-tooltip\\]|\\.message-tip|\\.simptip-(?:success|info|danger|error|warning)))?$`);
       const rootTokens = tokenSelector.test(selector.toString().trim()) && rule.nodes.every((node) =>
         node.type === 'comment' || (node.type === 'decl' && node.prop.startsWith('--')));
-      const expected = addon ? nuGuard : rootTokens ? errorPageGuard : legacyGuard;
+      const expected = addon ? newDesignGuard : rootTokens ? errorPageGuard : legacyGuard;
       if (!anchored || !compound.some((node) => JSON.stringify(nodeShape(node)) === guardShape(expected))) {
         throw new Error(`Missing error-page guard or design guard: ${selector}`);
       }
@@ -224,9 +224,9 @@ export function checkDisabledContrast(css, flavor) {
   css.walkRules((rule) => {
     for (const selector of postcss.list.comma(rule.selector)) {
       for (const decl of rule.nodes) {
-        if (decl.prop === '--textColorWeak' && selector === `${rootTokenScope}.dark-mode`) labels.push(decl.value);
+        if (decl.prop === '--textColorWeak' && selector === `${sharedTokenScope}.dark-mode`) labels.push(decl.value);
         for (const state of ['.is_disabled', '[disabled]']) {
-          if (decl.prop === 'background-color' && selector === `${darkScope} .button--primary${state}`) {
+          if (decl.prop === 'background-color' && selector === `${legacyDarkScope} .button--primary${state}`) {
             backgrounds.set(state, decl.value);
           }
         }
@@ -319,7 +319,7 @@ export function checkNuStyle(css, flavor, reportException = console.log) {
   let minimum = Infinity;
   const exceptions = new Set();
   css.walkRules((rule) => {
-    const component = Object.entries(nuComponentTokens).find(([selector]) => rule.selector === `${nuTokenScope} ${selector}`)?.[1];
+    const component = Object.entries(nuComponentTokens).find(([selector]) => rule.selector === `${newDesignTokenScope} ${selector}`)?.[1];
     if (component) {
       if (rule.nodes.length !== Object.keys(component).length || rule.nodes.some((decl) => decl.type !== 'decl' || decl.important || decl.value !== `var(${component[decl.prop]})`)) throw new Error(`Unexpected add-on component: ${rule.selector}`);
       return;
@@ -395,7 +395,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     const mixedNu = postcss.parse((await compile('latte', addon, library, 'mocha', 'green')).css);
     const nuValues = new Map();
     mixedNu.walkRules((rule) => nuValues.set(rule.selector, rule.nodes.filter((decl) => decl.prop === '--nuui-bg-default').at(-1)?.value));
-    if (nuValues.get(nuTokenScope) === nuValues.get(`${nuTokenScope}.dark-mode`)) throw new Error('Add-on flavor switching failed');
+    if (nuValues.get(newDesignTokenScope) === nuValues.get(`${newDesignTokenScope}.dark-mode`)) throw new Error('Add-on flavor switching failed');
     const mixed = postcss.parse((await compile('latte', source, library, 'mocha', 'green')).css, { from: undefined, map: false });
     const palettes = {};
     mixed.walkDecls('--backgroundColorBase', (decl) => {

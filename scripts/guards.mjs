@@ -2,10 +2,10 @@ export const escapeSelector = (selector) => selector.replace(/[.*+?^${}()|[\]\\]
 export const newDesignMarker = ':has(> head > link[href*="/styles_nu-ui/"])';
 export const errorPageGuard = ':where(:not(:has(> body.Page--error)))';
 export const legacyGuard = `:where(:not(:has(> body.Page--error), ${newDesignMarker}))`;
-export const nuGuard = `:where(:not(:has(> body.Page--error))${newDesignMarker})`;
+export const newDesignGuard = `:where(:not(:has(> body.Page--error))${newDesignMarker})`;
 export const errorPageGuardPattern = escapeSelector(errorPageGuard);
-export const errorPageScope = `:root${legacyGuard}`;
-export const darkScope = `.dark-mode${legacyGuard}`;
-export const rootTokenScope = `${':root'.repeat(5)}${errorPageGuard}`;
-export const rootOverrideScope = `${':root'.repeat(5)}${legacyGuard}`;
-export const nuTokenScope = `${':root'.repeat(5)}${nuGuard}`;
+export const legacyScope = `:root${legacyGuard}`;
+export const legacyDarkScope = `.dark-mode${legacyGuard}`;
+export const sharedTokenScope = `${':root'.repeat(5)}${errorPageGuard}`;
+export const legacyOverrideScope = `${':root'.repeat(5)}${legacyGuard}`;
+export const newDesignTokenScope = `${':root'.repeat(5)}${newDesignGuard}`;

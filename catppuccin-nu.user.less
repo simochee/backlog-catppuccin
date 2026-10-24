@@ -17,17 +17,19 @@
 
 @import "https://userstyles.catppuccin.com/lib/std/v1.less";
 
+@newDesignMarker: ~':has(> head > link[href*="/styles_nu-ui/"])';
+
 @-moz-document regexp("https?://([a-zA-Z0-9-]+\\.)+backlog\\.(com|jp)(:[0-9]+)?/.*"), regexp("https?://([a-zA-Z0-9-]+\\.)+backlogtool\\.com(:[0-9]+)?/.*") {
-    :root:root:root:root:root:where(:not(:has(> body.Page--error)):has(> head > link[href*="/styles_nu-ui/"])) {
+    :root:root:root:root:root:where(:not(:has(> body.Page--error))@{newDesignMarker}) {
       #nuui(@lightFlavor);
       body { #nuui(@lightFlavor); }
     }
-    :root:root:root:root:root:where(:not(:has(> body.Page--error)):has(> head > link[href*="/styles_nu-ui/"])).dark-mode {
+    :root:root:root:root:root:where(:not(:has(> body.Page--error))@{newDesignMarker}).dark-mode {
       #nuui(@darkFlavor);
       body { #nuui(@darkFlavor); }
     }
 
-    :root:root:root:root:root:where(:not(:has(> body.Page--error)):has(> head > link[href*="/styles_nu-ui/"])) {
+    :root:root:root:root:root:where(:not(:has(> body.Page--error))@{newDesignMarker}) {
       .project-nav-list {
         --nuui-bg-ghost-inverted-hover: var(--nuui-bg-ghost-hover);
         --nuui-bg-ghost-inverted-active: var(--nuui-bg-ghost-active);

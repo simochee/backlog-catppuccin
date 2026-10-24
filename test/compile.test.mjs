@@ -7,7 +7,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { promisify } from 'node:util';
 import { execFile } from 'node:child_process';
 import postcss from 'postcss';
-import { compile, checkDisabledContrast, darkScope, rootTokenScope, rootOverrideScope, nuContrastPairs, checkErrorPageExclusion, errorPageScope, checkOverrides, checkNeutralOrder, parseColor, checkRGBCounterpart } from '../scripts/compile.mjs';
+import { compile, checkDisabledContrast, legacyDarkScope, sharedTokenScope, legacyOverrideScope, nuContrastPairs, checkErrorPageExclusion, legacyScope, checkOverrides, checkNeutralOrder, parseColor, checkRGBCounterpart } from '../scripts/compile.mjs';
 import expectedOrder from './fixtures/neutral-order.json' with { type: 'json' };
 import { blockStart, blockEnd } from '../scripts/dark-text.mjs';
 
@@ -36,12 +36,12 @@ test('CLI checks execute from a path containing spaces and URL-encoded character
     .fixture() when (@flavor = latte) { ${assignments('latte')} }
     .fixture() when not (@flavor = latte) { ${assignments('mocha')} }
     .theme(@flavor) { .fixture(); }
-    ${rootTokenScope} { .theme(@lightFlavor); }
-    ${rootTokenScope}.dark-mode { .theme(@darkFlavor); }
-    ${darkScope} .button--primary.is_disabled, ${darkScope} .button--primary[disabled] { background-color: #333; }`);
+    ${sharedTokenScope} { .theme(@lightFlavor); }
+    ${sharedTokenScope}.dark-mode { .theme(@darkFlavor); }
+    ${legacyDarkScope} .button--primary.is_disabled, ${legacyDarkScope} .button--primary[disabled] { background-color: #333; }`);
   const nuAssignments = [...new Set(nuContrastPairs().flat())].map((name) =>
     `--nuui-${name}: ${name.startsWith('bg-') ? '#ffffff' : '#000000'};`).join(' ');
-  const { nuTokenScope } = await import('../scripts/guards.mjs');
+  const { newDesignTokenScope } = await import('../scripts/guards.mjs');
   await writeFile(join(directory, 'catppuccin-nu.user.less'), `${importLine}
     .nu(@flavor) { ${nuAssignments}
       --nuui-bg-default: if((@flavor = latte), #fff, #eee);
@@ -50,8 +50,8 @@ test('CLI checks execute from a path containing spaces and URL-encoded character
       --nuui-bg-floating: #fff;
       --nuui-bg-ghost-active: #eee;
     }
-    ${nuTokenScope} { .nu(@lightFlavor); body { .nu(@lightFlavor); } }
-    ${nuTokenScope}.dark-mode { .nu(@darkFlavor); body { .nu(@darkFlavor); } }`);
+    ${newDesignTokenScope} { .nu(@lightFlavor); body { .nu(@lightFlavor); } }
+    ${newDesignTokenScope}.dark-mode { .nu(@darkFlavor); body { .nu(@darkFlavor); } }`);
   await writeFile(join(directory, 'mock-fetch.mjs'), `globalThis.fetch = async (url) => new Response(
     String(url).endsWith('.less') ? '/* fixture library */' :
     String(url).endsWith('.css') ? ':root { --backgroundColorBase: red; }' :
@@ -176,7 +176,7 @@ test('RGB checks name mismatched and missing counterparts', () => {
   }
 });
 
-const scope = rootOverrideScope;
+const scope = legacyOverrideScope;
 for (const color of ['#abc', '#aabbcc', 'rgb(10, 20, 30)', 'rgba(10, 20, 30, 0.5)', 'hsl(120, 50%, 50%)', 'rgb(10 20 30 / 50%)', 'hsl(120 50% 50%)']) {
   test(`override allowlist accepts themed colors in ${color}`, () => {
     for (const prefix of [scope, `${scope}.dark-mode`, `${scope} body`]) {
@@ -203,24 +203,24 @@ test('override allowlist rejects mismatched selectors, values and unlisted prope
 test('override allowlist preserves token overrides and custom assignments', () => {
   assert.doesNotThrow(() => checkOverrides(postcss.parse(`
     :root { --example: #abc; }
-    ${darkScope} .example { color: var(--backgroundColorSchemeBase); }
-    ${darkScope} .pill--square.-subtasking { color: var(--textColorWeak); }
-    ${errorPageScope}:not(.dark-mode) body.Page--view-kanban .card { background-color: var(--backgroundColorSchemeBase); }
+    ${legacyDarkScope} .example { color: var(--backgroundColorSchemeBase); }
+    ${legacyDarkScope} .pill--square.-subtasking { color: var(--textColorWeak); }
+    ${legacyScope}:not(.dark-mode) body.Page--view-kanban .card { background-color: var(--backgroundColorSchemeBase); }
   `)));
 });
 
 test('error-page exclusion rejects any unguarded selector, including mixed lists and nested contexts', () => {
-  for (const selector of [':root', 'body:not(.Page--error)', '.dark-mode .pill', `${errorPageScope}, .pill`, `[title='${errorPageScope}']`]) {
+  for (const selector of [':root', 'body:not(.Page--error)', '.dark-mode .pill', `${legacyScope}, .pill`, `[title='${legacyScope}']`]) {
     assert.throws(() => checkErrorPageExclusion(postcss.parse(`@media screen {${selector} {--example:red}}`)), /Missing error-page guard/);
   }
-  assert.doesNotThrow(() => checkErrorPageExclusion(postcss.parse(`${rootTokenScope}, ${rootTokenScope}.dark-mode body {--example:red}`)));
+  assert.doesNotThrow(() => checkErrorPageExclusion(postcss.parse(`${sharedTokenScope}, ${sharedTokenScope}.dark-mode body {--example:red}`)));
 });
 
 test('disabled contrast checks both states and reports flavor and measured ratio', () => {
   const fixture = (label = '#aaa', background = '#333') => postcss.parse(`
-    ${rootTokenScope}.dark-mode { --textColorWeak: ${label}; }
-    ${darkScope} .button--primary.is_disabled { background-color: ${background}; }
-    ${darkScope} .button--primary[disabled] { background-color: ${background}; }
+    ${sharedTokenScope}.dark-mode { --textColorWeak: ${label}; }
+    ${legacyDarkScope} .button--primary.is_disabled { background-color: ${background}; }
+    ${legacyDarkScope} .button--primary[disabled] { background-color: ${background}; }
   `);
   for (const flavor of ['frappe', 'macchiato', 'mocha']) {
     assert.match(checkDisabledContrast(fixture(), flavor), /PASS.*:1 >= 3:1/);
@@ -247,7 +247,7 @@ test('error-page guard must be complete and belong to the leading root or dark c
     '.other:where(:not(:has(> body.Page--error)))',
   ]) assert.throws(() => checkErrorPageExclusion(postcss.parse(`${selector} {color:red}`)), /Missing error-page guard/);
   assert.doesNotThrow(() => checkErrorPageExclusion(postcss.parse(`
-    ${darkScope} .item:is(.a, .b), ${rootOverrideScope} body {color:red}
+    ${legacyDarkScope} .item:is(.a, .b), ${legacyOverrideScope} body {color:red}
     @keyframes pulse {from {opacity:0} to {opacity:1}}
     @-webkit-keyframes pulse {50% {opacity:0}}
   `)));
