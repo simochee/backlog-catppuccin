@@ -53,17 +53,41 @@ Run extraction and coverage regression tests:
 npm test
 ```
 
+Regenerate the dark-mode accent-surface text selectors, or check the committed
+block against live CSS (the latter runs in the non-required coverage CI job):
+
+```sh
+npm run generate:dark-text
+npm run check:dark-text
+```
+
+Generated text rules retain the site's dark selector specificity and declaration
+importance, so more specific states keep their colors. Generation and freshness
+checks also print non-dark color selectors with equal or greater specificity
+that share a BEM block. This conservative report includes ancestors, descendants
+and different conditional contexts; it does not prove that selectors overlap or
+cause a visible conflict and does not fail the check. Confirmed transparent
+subtask chips and migration-card links are restored separately by hand.
+
 The extractor discovers stylesheet URLs at runtime from the public error page
-at `https://simochee.backlog.com/this-page-does-not-exist`; it never signs in.
+at `https://simochee.backlog.com/this-page-does-not-exist`, then adds the Common,
+ReactApp, Kanban, Wiki, Git, Documents, React index and global-bar bundles from
+the discovered version path; it never signs in. Missing speculative bundles
+(HTTP 404) are skipped with a warning; linked stylesheets, extra URLs, and other
+fetch failures remain errors.
 Set `BACKLOG_PAGE_URL` to override the discovery page (relative stylesheet links
 are resolved against that URL). Discovered stylesheets outside HTTPS
 `assets.backlog.com` are skipped with a warning on stderr.
-Optional extra stylesheet URLs can be supplied after `--` to either extraction
-or coverage. Only HTTPS URLs on `assets.backlog.com` are accepted:
+Optional extra stylesheet URLs can be supplied after `--` to extraction,
+coverage, generation or freshness checking. Use the same extras for generation
+and checking, including authenticated-page AI/document bundle URLs when available.
+Only HTTPS URLs on `assets.backlog.com` are accepted:
 
 ```sh
 npm run check:coverage -- "$EXTRA_STYLESHEET_URL"
 npm run --silent extract -- "$EXTRA_STYLESHEET_URL"
+npm run generate:dark-text -- "$EXTRA_STYLESHEET_URL"
+npm run check:dark-text -- "$EXTRA_STYLESHEET_URL"
 ```
 
 Downloads stay in memory. Neither downloaded CSS/HTML nor original variable

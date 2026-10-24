@@ -7,6 +7,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { promisify } from 'node:util';
 import { execFile } from 'node:child_process';
 import { compile } from '../scripts/compile.mjs';
+import { blockStart, blockEnd } from '../scripts/dark-text.mjs';
 
 const importLine = '@import "https://userstyles.catppuccin.com/lib/std/v1.less";';
 
@@ -21,7 +22,7 @@ test('CLI checks execute from a path containing spaces and URL-encoded character
   const directory = await realpath(await mkdtemp(join(tmpdir(), 'catppuccin space # 日本語-')));
   t.after(() => rm(directory, { recursive: true, force: true }));
   await mkdir(join(directory, 'scripts'));
-  for (const file of ['compile.mjs', 'coverage.mjs', 'source.mjs']) {
+  for (const file of ['compile.mjs', 'coverage.mjs', 'source.mjs', 'dark-text.mjs']) {
     await copyFile(new URL(`../scripts/${file}`, import.meta.url), join(directory, 'scripts', file));
   }
   await symlink(fileURLToPath(new URL('../node_modules', import.meta.url)), join(directory, 'node_modules'), 'dir');
@@ -40,4 +41,15 @@ test('CLI checks execute from a path containing spaces and URL-encoded character
     const { stdout } = await promisify(execFile)(process.execPath, ['--import', pathToFileURL(join(directory, 'mock-fetch.mjs')).href, join(directory, 'scripts', `${script}.mjs`)], { env: { ...process.env, BACKLOG_PAGE_URL: 'https://simochee.backlog.com/fixture-page' } });
     assert.match(stdout, expected);
   }
+  const file = join(directory, 'catppuccin.user.less');
+  await writeFile(file, `${blockStart}\n${blockEnd}`);
+  await writeFile(join(directory, 'mock-dark-fetch.mjs'), `globalThis.fetch = async (url) => new Response(
+    String(url).endsWith('.css') ? '.pill {color:var(--backgroundColorSchemeBase)} .dark-mode .pill {color:var(--textColorPrimary)}' :
+    '<link rel="stylesheet" href="https://assets.backlog.com/fixture.css">');`);
+  const args = ['--import', pathToFileURL(join(directory, 'mock-dark-fetch.mjs')).href, join(directory, 'scripts/dark-text.mjs')];
+  const run = promisify(execFile);
+  await assert.rejects(run(process.execPath, [...args, '--check']), /out of date/);
+  await run(process.execPath, args);
+  const { stdout } = await run(process.execPath, [...args, '--check']);
+  assert.match(stdout, /Pattern A \(1\):\n.pill[\s\S]*up to date/);
 });

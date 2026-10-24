@@ -10,12 +10,16 @@
     "extract": "node scripts/extract.mjs",
     "check:coverage": "node scripts/coverage.mjs",
     "check:less": "node scripts/compile.mjs",
+    "generate:dark-text": "node scripts/dark-text.mjs",
+    "check:dark-text": "node scripts/dark-text.mjs --check",
     "test": "node --test"
   },
   "devDependencies": {
+    "@csstools/selector-specificity": "6.0.1",
     "color-name": "2.1.0",
     "less": "4.6.7",
     "postcss": "8.5.31",
+    "postcss-selector-parser": "7.1.7",
     "postcss-value-parser": "4.2.0"
   }
 }

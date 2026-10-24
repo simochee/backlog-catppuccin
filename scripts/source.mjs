@@ -5,8 +5,13 @@ import { gunzipSync } from 'node:zlib';
 
 export const pageURL = process.env.BACKLOG_PAGE_URL || 'https://simochee.backlog.com/this-page-does-not-exist';
 
-export async function download(url, allow404 = false) {
+export async function download(url, allow404 = false, skip404 = false) {
   const response = await fetch(url, { redirect: 'error', signal: AbortSignal.timeout(30000) });
+  if (skip404 && response.status === 404) {
+    await response.body?.cancel();
+    console.error(`Warning: skipped missing stylesheet: ${url}`);
+    return null;
+  }
   if (!response.ok && !(allow404 && response.status === 404)) {
     throw new Error(`HTTP ${response.status} while fetching ${url}`);
   }
@@ -16,7 +21,7 @@ export async function download(url, allow404 = false) {
   return bytes.toString('utf8');
 }
 
-export function stylesheetURLs(html) {
+export function stylesheetURLs(html, speculativeURLs = new Set()) {
   const urls = new Set();
   for (const link of html.matchAll(/<link\b[^>]*>/gi)) {
     const attrs = Object.fromEntries([...link[0].matchAll(/([\w-]+)\s*=\s*["']([^"']*)["']/g)]
@@ -31,7 +36,19 @@ export function stylesheetURLs(html) {
     }
   }
   if (!urls.size) throw new Error('No stylesheet links discovered');
-  return [...urls];
+  for (const url of [...urls]) {
+    const base = url.match(/^https:\/\/assets\.backlog\.com\/playassets\/[^/]+\//)?.[0];
+    if (!base) continue;
+    for (const path of [
+      'styles/Common.css', 'styles/ReactApp.css', 'styles/Kanban.css',
+      'styles/Wiki.css', 'styles/Git.css', 'styles/Documents.css',
+      'react/static/css/index.css', 'react/global-bar/static/css/main.css',
+    ]) {
+      const candidate = new URL(path, base).href;
+      if (!urls.has(candidate)) speculativeURLs.add(candidate);
+    }
+  }
+  return [...new Set([...urls, ...speculativeURLs])];
 }
 
 export function validateStylesheetURL(input) {
@@ -75,15 +92,22 @@ export function inspectCSS(css) {
   return { names: [...colors].sort(), composites: [...composites].filter((name) => colors.has(name)).sort() };
 }
 
-export async function extract(extraURLs = []) {
+export async function loadStylesheets(extraURLs = []) {
   const validatedExtras = extraURLs.filter(Boolean).map(validateStylesheetURL);
-  const urls = [...new Set([...stylesheetURLs(await download(pageURL, true)), ...validatedExtras])];
+  const speculativeURLs = new Set();
+  const urls = [...new Set([...stylesheetURLs(await download(pageURL, true), speculativeURLs), ...validatedExtras])];
   const stylesheets = await Promise.all(urls.map(async (url) => {
-    const css = await download(url);
+    const css = await download(url, false, speculativeURLs.has(url) && !validatedExtras.includes(url));
+    if (css === null) return null;
     console.error(`Source: ${url}`);
-    return css;
+    return { url, css };
   }));
-  const result = inspectCSS(stylesheets.join('\n'));
+  return stylesheets.filter(Boolean);
+}
+
+export async function extract(extraURLs = []) {
+  const stylesheets = await loadStylesheets(extraURLs);
+  const result = inspectCSS(stylesheets.map(({ css }) => css).join('\n'));
   if (!result.names.length) throw new Error('No color variables discovered');
   return { names: result.names.filter((name) => !result.composites.includes(name)), composites: result.composites, total: result.names.length };
 }
