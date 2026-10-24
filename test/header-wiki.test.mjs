@@ -28,6 +28,9 @@ for (const flavor of ['latte', 'frappe', 'macchiato', 'mocha']) {
     const css = postcss.parse((await compile(flavor, source, library)).css);
     checkOverrides(css);
     checkErrorPageExclusion(css);
+    const roots = [];
+    css.walkRules((rule) => { if (rule.selector === scope) roots.push(rule); });
+    assert.equal(roots[0].nodes.find((decl) => decl.prop === '--iconColorWeak').value, flavor === 'latte' ? '#333333' : '#444444');
     for (const state of ['.is_disabled', '[disabled]']) {
       const selector = `${darkScope} .button--primary${state}`;
       const declarations = [];

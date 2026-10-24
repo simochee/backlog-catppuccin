@@ -387,7 +387,7 @@
       --iconColorDisabled: @overlay0;
       --iconColorDsabled: @overlay0;
       --iconColorPseudo: @subtext0;
-      --iconColorWeak: @overlay0;
+      --iconColorWeak: if((@flavor = latte), @subtext0, @overlay0);
       --issueActionColor: @green;
       --issueActionColor-rgb: red(@green), green(@green), blue(@green);
       --notificationColorDefault: @red;
