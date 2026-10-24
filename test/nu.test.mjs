@@ -64,6 +64,7 @@ function validNu() {
   entries.set('bg-floating', '#fff');
   entries.set('bg-ghost-hover', '#ccc');
   entries.set('bg-ghost-active', '#eee');
+  entries.set('bg-ghost-pressed', '#bbb');
   entries.set('bg-subtle', '#fff');
   entries.set('bg-row-header', '#fff');
   entries.set('bg-disabled', '#ddd');

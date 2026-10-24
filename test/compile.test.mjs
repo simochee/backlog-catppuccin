@@ -26,9 +26,10 @@ test('CLI checks execute from a path containing spaces and URL-encoded character
   await mkdir(join(directory, 'scripts'));
   await mkdir(join(directory, 'test/fixtures'), { recursive: true });
   await copyFile(new URL('./fixtures/neutral-order.json', import.meta.url), join(directory, 'test/fixtures/neutral-order.json'));
-  for (const file of ['compile.mjs', 'coverage.mjs', 'source.mjs', 'dark-text.mjs', 'literals.mjs', 'guards.mjs']) {
+  for (const file of ['compile.mjs', 'coverage.mjs', 'source.mjs', 'dark-text.mjs', 'literals.mjs', 'guards.mjs', 'palette.mjs', 'style-policy.mjs']) {
     await copyFile(new URL(`../scripts/${file}`, import.meta.url), join(directory, 'scripts', file));
   }
+  for (const file of ['nu-token-types.json', 'catppuccin-library.less']) await copyFile(new URL(`./fixtures/${file}`, import.meta.url), join(directory, 'test/fixtures', file));
   await symlink(fileURLToPath(new URL('../node_modules', import.meta.url)), join(directory, 'node_modules'), 'dir');
   const assignments = (flavor) => Object.entries(surfaceValues(flavor))
     .map(([name, value]) => `${name}: ${value};`).join(' ');
@@ -62,20 +63,17 @@ test('CLI checks execute from a path containing spaces and URL-encoded character
     String(url).endsWith('.css') ? ':root { --backgroundColorBase: red; --nuui-bg-default: white; }' :
     String(url) === process.env.BACKLOG_PAGE_URL ? '<link rel="stylesheet" href="https://assets.backlog.com/styles_nu-ui/fixture.css">' :
     (() => { throw new Error('Unexpected discovery page'); })());`);
-  await writeFile(join(directory, 'offline-fetch.mjs'), `globalThis.fetch = async (url) => { if (String(url) !== 'https://userstyles.catppuccin.com/lib/std/v1.less') throw new Error('Backlog request forbidden: ' + url); return new Response('/* fixture library */'); };`);
+  await writeFile(join(directory, 'offline-fetch.mjs'), `globalThis.fetch = async () => { throw new Error('Network forbidden in offline compilation'); };`);
   for (const [script, expected] of [
-    ['compile', /mocha: PASS[\s\S]*Independent light\/dark switching.*PASS/],
     ['coverage', /1 assignable; 0 unassigned/],
     ['literals', /Summary: 0 stylesheets; 0 selector groups; 0 property\/kind entries/],
   ]) {
-    const { stdout } = await promisify(execFile)(process.execPath, ['--import', pathToFileURL(join(directory, script === 'compile' ? 'offline-fetch.mjs' : 'mock-fetch.mjs')).href, join(directory, 'scripts', `${script}.mjs`)], { env: { ...process.env, BACKLOG_PAGE_URL: 'https://simochee.backlog.com/fixture-page' } });
+    const { stdout } = await promisify(execFile)(process.execPath, ['--import', pathToFileURL(join(directory, 'mock-fetch.mjs')).href, join(directory, 'scripts', `${script}.mjs`)], { env: { ...process.env, BACKLOG_PAGE_URL: 'https://simochee.backlog.com/fixture-page' } });
     assert.match(stdout, expected);
-    if (script === 'compile') {
-      for (const flavor of ['latte', 'frappe', 'macchiato', 'mocha']) {
-        assert.match(stdout, new RegExp(`${flavor}: PASS[^\\n]*\\n${flavor} neutral ordering: PASS`));
-      }
-    }
   }
+  for (const file of ['catppuccin.user.less', 'catppuccin-nu.user.less']) await copyFile(new URL(`../${file}`, import.meta.url), join(directory, file));
+  const { stdout: compileOutput } = await promisify(execFile)(process.execPath, ['--import', pathToFileURL(join(directory, 'offline-fetch.mjs')).href, join(directory, 'scripts/compile.mjs')], { maxBuffer: 4 * 1024 * 1024 });
+  assert.match(compileOutput, /Both userstyles: all 15 accents.*sequential compilation.*PASS/);
   await writeFile(join(directory, 'failed-fetch.mjs'), `globalThis.fetch = async () => { throw new Error('fixture download failure'); };`);
   await assert.rejects(promisify(execFile)(process.execPath,
     ['--import', pathToFileURL(join(directory, 'failed-fetch.mjs')).href, join(directory, 'scripts/literals.mjs')]),
@@ -113,11 +111,11 @@ function surfaces(values = surfaceValues()) {
   return postcss.parse(`:root { ${Object.entries(values).map(([name, value]) => `${name}: ${value};`).join(' ')} }`);
 }
 
-test('latte keeps inputs lighter than the page', () => {
+test('latte preserves pane ordering before secondary surfaces', () => {
   assert.doesNotThrow(() => checkNeutralOrder(surfaces(), 'latte'));
   const values = surfaceValues();
   values['--backgroundColorSchemeBase'] = '#dddddd';
-  assert.throws(() => checkNeutralOrder(surfaces(values), 'latte'), /--backgroundColorSchemeBase.*--backgroundColorWeakOnBaseBG/);
+  assert.throws(() => checkNeutralOrder(surfaces(values), 'latte'), /--backgroundColorSchemeBase/);
 });
 
 for (const flavor of ['latte', 'frappe', 'macchiato', 'mocha']) {

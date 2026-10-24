@@ -135,8 +135,28 @@ npm run check:dark-text -- "$EXTRA_STYLESHEET_URL"
 
 Downloads stay in memory. Neither downloaded CSS/HTML nor original variable
 values are written to disk by these scripts. Extraction stdout contains names
-only; source diagnostics and exclusions go to stderr. The compile check also
-loads the remote standard library into memory, producing no generated files.
+only; source diagnostics and exclusions go to stderr. The compile check uses a SHA-256 pinned, MIT-attributed copy of the public
+Catppuccin standard library in `test/fixtures/` and makes no network requests.
+It runs both files sequentially through all 15 accents, four flavors, and both
+Latte/Mocha mixed directions. Guard structure, main overrides and RGB aliases,
+neutral states, contrast, add-on token types, and CIE76 palette distance are checked;
+failures are collected before exit. Palette summaries count literal occurrences
+as exact, within ΔE 12, or explicitly allowlisted with a reason. Alpha colors are
+compared by their unpremultiplied hue, while contrast composites them over the
+hosting base. The type manifest contains public token names only.
+
+[Catppuccin’s style guide](https://github.com/catppuccin/catppuccin/blob/main/docs/style-guide.md)
+defines the pane, surface, text, cursor, selection, syntax and diff roles. Neutral
+steps replace project tints that also paint fixed or overlapping surfaces. Other
+tints use palette alpha. Colored ink uses pure hues, with minimum 0.1% Latte HSL
+corrections capped at 20% where needed for the 3:1 floor. Exact-color exceptions
+in `scripts/style-policy.mjs` document the corrections exceeding ΔE 12. Primary
+hover/active colors change lightness by 2%/4%; disabled neutral surfaces use 3%
+to distinguish them from every ghost state; Frappé pressed uses a 2% surface2
+step because overlay0 would fall below 3:1. On-accent ink prefers base and logs
+any palette-ink substitution or retained Latte 2.5:1 solid exception. This follows
+the [reviewing guidance](https://github.com/catppuccin/userstyles/blob/main/docs/src/content/docs/contributing/maintainers/reviewing.md)
+to avoid large palette overcorrections.
 
 Color literals, named colors, color functions, RGB triplets, and references to
 known color tokens are recognized. Numbers and dimensions are excluded. Composite
