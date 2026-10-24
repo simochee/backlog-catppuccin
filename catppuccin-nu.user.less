@@ -27,6 +27,29 @@
       body { #nuui(@darkFlavor); }
     }
 
+    :root:root:root:root:root:where(:not(:has(> body.Page--error)):has(> head > link[href*="/styles_nu-ui/"])) {
+      .project-nav-list {
+        --nuui-bg-ghost-inverted-hover: var(--nuui-bg-ghost-hover);
+        --nuui-bg-ghost-inverted-active: var(--nuui-bg-ghost-active);
+      }
+      .card.-wiki-migration.is_not-yet {
+        --nuui-text-on-marker-inverted: var(--nuui-text-warning);
+        --nuui-icon-on-marker-inverted: var(--nuui-icon-warning);
+        border-color: var(--nuui-border-warning-subtle);
+        .wiki-migration-image svg path { fill: var(--nuui-icon-warning); }
+        .button {
+          background-color: var(--nuui-bg-warning-default);
+          border-color: var(--nuui-bg-warning-default);
+          color: var(--nuui-text-on-warning);
+          &:is(:hover, :focus, :focus-visible) {
+            background-color: var(--nuui-bg-default);
+            border-color: var(--nuui-border-warning-subtle);
+            color: var(--nuui-text-warning);
+          }
+        }
+      }
+    }
+
     #nuui(@flavor) {
       #lib.palette();
       @darkInk: if((@flavor = latte), @text, @crust);
@@ -40,11 +63,14 @@
         @result: if((@darkRatio > @lightRatio), @darkInk, @lightInk);
       }
       @onAccent: #on(mix(@accent, @base, @solidWeight))[@result];
+      @primaryStateBase: if((@onAccent = @darkInk), @lightInk, @darkInk);
       @onDanger: #on(mix(@red, @base, @solidWeight))[@result];
+      @dangerStateBase: if((@onDanger = @darkInk), @lightInk, @darkInk);
       @onWarning: #on(mix(@yellow, @base, @solidWeight))[@result];
       @onSuccess: #on(mix(@green, @base, @solidWeight))[@result];
       @onInfo: #on(mix(@blue, @base, @solidWeight))[@result];
       .roles() when (@flavor = latte) {
+        @sidebar: @crust;
         @canvas: @mantle;
         @default: @base;
         @floating: @base;
@@ -55,9 +81,10 @@
         @tint: 22%;
         @inkWeight: 40%;
         @markerWeight: 30%;
-        @solidWeight: 30%;
+        @solidWeight: 100%;
       }
       .roles() when not (@flavor = latte) {
+        @sidebar: @mantle;
         @canvas: @mantle;
         @default: @base;
         @floating: @surface0;
@@ -71,18 +98,18 @@
         @solidWeight: 100%;
       }
       .roles();
-      --nuui-bg-ai-default: mix(@mauve, @base, @markerWeight);
-      --nuui-bg-ai-hover: mix(@mauve, @base, (@markerWeight * 90% / 100%));
+      --nuui-bg-ai-default: linear-gradient(115deg, fade(@sapphire, 8%), fade(@mauve, 10%), fade(@pink, 8%));
+      --nuui-bg-ai-hover: linear-gradient(115deg, fade(@sapphire, 16%), fade(@mauve, 20%), fade(@pink, 16%));
       --nuui-bg-canvas-backdrop: @crust;
       --nuui-bg-canvas-default: @canvas;
-      --nuui-bg-danger-active: mix(@red, @base, (@solidWeight * 80% / 100%));
+      --nuui-bg-danger-active: mix(@red, @dangerStateBase, (@solidWeight * 80% / 100%));
       --nuui-bg-danger-banner: mix(@red, @base, @tint);
       --nuui-bg-danger-banner-critical: mix(@red, @base, @solidWeight);
       --nuui-bg-danger-default: mix(@red, @base, @solidWeight);
       --nuui-bg-danger-ghost-active: mix(@red, @base, 30%);
       --nuui-bg-danger-ghost-hover: mix(@red, @base, @tint);
       --nuui-bg-danger-highlight: mix(@red, @base, 30%);
-      --nuui-bg-danger-hover: mix(@red, @base, (@solidWeight * 90% / 100%));
+      --nuui-bg-danger-hover: mix(@red, @dangerStateBase, (@solidWeight * 90% / 100%));
       --nuui-bg-danger-shape: mix(@red, @base, @solidWeight);
       --nuui-bg-danger-subtle: mix(@red, @base, @tint);
       --nuui-bg-default: @default;
@@ -154,9 +181,9 @@
       --nuui-bg-marker-yellow-shape: mix(@yellow, @base, @markerWeight);
       --nuui-bg-marker-yellow-subtle: mix(@yellow, @base, @tint);
       --nuui-bg-overlay: fade(@crust, 65%);
-      --nuui-bg-primary-active: mix(@accent, @base, (@solidWeight * 80% / 100%));
+      --nuui-bg-primary-active: mix(@accent, @primaryStateBase, (@solidWeight * 80% / 100%));
       --nuui-bg-primary-default: mix(@accent, @base, @solidWeight);
-      --nuui-bg-primary-hover: mix(@accent, @base, (@solidWeight * 90% / 100%));
+      --nuui-bg-primary-hover: mix(@accent, @primaryStateBase, (@solidWeight * 90% / 100%));
       --nuui-bg-primary-row-selected: mix(@accent, @base, @tint);
       --nuui-bg-primary-shape: mix(@accent, @base, @solidWeight);
       --nuui-bg-primary-subtle: mix(@accent, @base, @tint);
@@ -168,13 +195,13 @@
       --nuui-bg-success-highlight: mix(@green, @base, 30%);
       --nuui-bg-success-shape: mix(@green, @base, @solidWeight);
       --nuui-bg-success-subtle: mix(@green, @base, @tint);
-      --nuui-bg-theme-nav: mix(@accent, @base, @tint);
+      --nuui-bg-theme-nav: @sidebar;
       --nuui-bg-warning-banner: mix(@yellow, @base, @tint);
       --nuui-bg-warning-default: mix(@yellow, @base, @solidWeight);
       --nuui-bg-warning-highlight: mix(@yellow, @base, 30%);
       --nuui-bg-warning-shape: mix(@yellow, @base, @solidWeight);
       --nuui-bg-warning-subtle: mix(@yellow, @base, @tint);
-      --nuui-border-ai: mix(@mauve, @base, 100%);
+      --nuui-border-ai: linear-gradient(135deg, @sapphire, @mauve, @pink);
       --nuui-border-button: @overlay0;
       --nuui-border-danger-default: mix(@red, @base, 100%);
       --nuui-border-danger-subtle: mix(@red, @base, 35%);
@@ -221,7 +248,7 @@
       --nuui-elevation-shadow-large: 0 8px 24px fade(@crust, 30%);
       --nuui-elevation-shadow-medium: 0 4px 12px fade(@crust, 24%);
       --nuui-elevation-shadow-small: 0 2px 4px fade(@crust, 18%);
-      --nuui-icon-ai: mix(@mauve, @text, @inkWeight);
+      --nuui-icon-ai: linear-gradient(125deg, @blue, @mauve, @pink);
       --nuui-icon-danger: mix(@red, @text, @inkWeight);
       --nuui-icon-default: @text;
       --nuui-icon-disabled: @overlay0;
