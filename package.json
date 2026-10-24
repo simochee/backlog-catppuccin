@@ -10,6 +10,8 @@
     "extract": "node scripts/extract.mjs",
     "check:coverage": "node scripts/coverage.mjs",
     "check:less": "node scripts/compile.mjs",
+    "generate:dark-text": "node scripts/dark-text.mjs",
+    "check:dark-text": "node scripts/dark-text.mjs --check",
     "test": "node --test"
   },
   "devDependencies": {

@@ -28,6 +28,112 @@
     #catppuccin(@darkFlavor);
     body { #catppuccin(@darkFlavor); }
     #tooltips(@darkFlavor);
+    // BEGIN GENERATED DARK TEXT (npm run generate:dark-text)
+    .Page--credit-card .credit-card-form-table .card-ok,
+    .Page--edit-wiki .card.-wiki-migration.is_done,
+    .Page--edit-wiki .card.-wiki-migration.is_done .title,
+    .Page--edit-wiki .card.-wiki-migration.is_not-yet,
+    .Page--edit-wiki .card.-wiki-migration.is_not-yet .title,
+    .Page--find-wiki .card.-wiki-migration.is_done,
+    .Page--find-wiki .card.-wiki-migration.is_done .title,
+    .Page--find-wiki .card.-wiki-migration.is_not-yet,
+    .Page--find-wiki .card.-wiki-migration.is_not-yet .title,
+    .Page--integrations-setting .chatwork-help,
+    .Page--profile-list .member-list__launch-menu-item,
+    .Page--profile-list .member-list__launch-menu-item:hover,
+    .Page--view-wiki .card.-wiki-migration.is_done,
+    .Page--view-wiki .card.-wiki-migration.is_done .title,
+    .Page--view-wiki .card.-wiki-migration.is_not-yet,
+    .Page--view-wiki .card.-wiki-migration.is_not-yet .title,
+    .badge--default,
+    .button--primary,
+    .button-group__link.is_active,
+    .calendar__day.is_active,
+    .calendar__day.is_selected,
+    .calendar__title,
+    .dashboard-announce-list__category,
+    .dropdown-box__header-nav-label,
+    .dropdown-box__header-nav-link,
+    .dropdown-box__title,
+    .dropdown-box__toggle-button,
+    .dropdown-box__toggle-button:not(.is_active):focus,
+    .dropdown-box__toggle-button:not(.is_active):hover,
+    .filter-nav.-wiki-tag .filter-nav__link.is_active,
+    .filter-nav.-wiki-tag .filter-nav__link.is_active .filter-nav__num,
+    .filter-nav.-wiki-tag .filter-nav__link:focus,
+    .filter-nav.-wiki-tag .filter-nav__link:focus .filter-nav__num,
+    .filter-nav.-wiki-tag .filter-nav__link:hover,
+    .filter-nav.-wiki-tag .filter-nav__link:hover .filter-nav__num,
+    .filter-nav__link.is_active,
+    .filter-nav__link.is_active .filter-nav__num,
+    .filter-nav__link:focus,
+    .filter-nav__link:focus .filter-nav__num,
+    .filter-nav__link:hover,
+    .filter-nav__link:hover .filter-nav__num,
+    .icon-button--ai.is_active ._assistive-text,
+    .icon-button--ai.is_active svg.icon,
+    .icon-button--ai:active ._assistive-text,
+    .icon-button--ai:active svg.icon,
+    .icon-button--ai:focus-visible ._assistive-text,
+    .icon-button--ai:focus-visible svg.icon,
+    .icon-button--ai:hover ._assistive-text,
+    .icon-button--ai:hover svg.icon,
+    .icon-button--default.is_active .iconic-text,
+    .icon-button--default:focus-visible .iconic-text,
+    .icon-button--default:hover .iconic-text,
+    .icon-button--default[aria-expanded=true]:not(.-disabled-active) .iconic-text,
+    .icon-button--primary ._assistive-text,
+    .icon-button--primary svg.icon,
+    .icon-button.-with-text.is_active ._assistive-text,
+    .icon-button.-with-text:focus-visible ._assistive-text,
+    .icon-button.-with-text:hover ._assistive-text,
+    .icon-button.-with-text[aria-expanded=true]:not(.-disabled-active) ._assistive-text,
+    .input-checkbox.-inverse+label,
+    .issue-csv-import-dialog .confirmation-dialog .confirmation-dialog-title,
+    .message--error,
+    .message--integration:not(.-for-normal-users) .button:hover,
+    .message--success,
+    .message--warning,
+    .modal__title,
+    .pager__link.is_current,
+    .pager__link:focus,
+    .pager__link:hover,
+    .pill,
+    .pill--issue-type-1,
+    .pill--issue-type-10,
+    .pill--issue-type-2,
+    .pill--issue-type-3,
+    .pill--issue-type-4,
+    .pill--issue-type-5,
+    .pill--issue-type-6,
+    .pill--issue-type-7,
+    .pill--issue-type-8,
+    .pill--issue-type-9,
+    .project-list .project-launch-menu__link,
+    .project-list__item:focus-within .project-launch-menu__text,
+    .project-list__item:focus-within .project-list__key,
+    .project-list__item:focus-within .project-list__name,
+    .project-list__item:hover .project-launch-menu__text,
+    .project-list__item:hover .project-list__key,
+    .project-list__item:hover .project-list__name,
+    .project-nav-list__icon.icon,
+    .project-nav-list__link#navi-document .project-nav-list__beta,
+    .project-nav-list__text,
+    .slide-in__title,
+    .status,
+    .status-label,
+    .stream-update span.Action,
+    .view-issue-file-upload__tooltip,
+    [class^=Page--wiki] .card.-wiki-migration.is_done,
+    [class^=Page--wiki] .card.-wiki-migration.is_done .title,
+    [class^=Page--wiki] .card.-wiki-migration.is_not-yet,
+    [class^=Page--wiki] .card.-wiki-migration.is_not-yet .title {
+      color: var(--backgroundColorSchemeBase) !important;
+    }
+    // END GENERATED DARK TEXT
+  }
+  :root:not(.dark-mode) body.Page--view-kanban .card {
+    background-color: var(--backgroundColorSchemeBase);
   }
 
   #tooltips(@flavor) {
@@ -102,6 +208,9 @@
     --commonColorShockingPink-rgb: red(@flamingo), green(@flamingo), blue(@flamingo);
     --commonColorYellow: @yellow;
     --commonColorYellow-rgb: red(@yellow), green(@yellow), blue(@yellow);
+    // Emoji picker surface and accent channels.
+    --color-border: @surface1;
+    --rgb-accent: red(@accent), green(@accent), blue(@accent);
     // defaultColor
     --defaultColorAccent: @accent;
     --defaultColorAccent-rgb: red(@accent), green(@accent), blue(@accent);
