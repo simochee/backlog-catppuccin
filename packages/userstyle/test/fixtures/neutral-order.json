@@ -2,62 +2,25 @@
   "latte": {
     "direction": "descending",
     "order": [
-      [
-        "--backgroundColorDefault",
-        "--backgroundColorBase",
-        "--backgroundColorSchemeBase"
-      ],
-      [
-        "--backgroundColorWeakOnBaseBG",
-        "--backgroundColorWeak"
-      ],
-      [
-        "--backgroundColorDisabled",
-        "--backgroundColorDsabled"
-      ],
-      [
-        "--backgroundColorHover",
-        "--backgroundColorUpdate",
-        "--backgroundColorPrimary"
-      ],
-      [
-        "--backgroundColorUpdateHover"
-      ],
-      [
-        "--backgroundColorHighlightUpdate"
-      ]
+      ["--backgroundColorDefault", "--backgroundColorBase", "--backgroundColorSchemeBase"],
+      ["--backgroundColorWeakOnBaseBG", "--backgroundColorWeak"],
+      ["--backgroundColorDisabled", "--backgroundColorDsabled"],
+      ["--backgroundColorHover", "--backgroundColorUpdate", "--backgroundColorPrimary"],
+      ["--backgroundColorUpdateHover"],
+      ["--backgroundColorHighlightUpdate"]
     ],
     "distinct": [
-      [
-        "--backgroundColorDisabled",
-        "--backgroundColorHover"
-      ],
-      [
-        "--backgroundColorHover",
-        "--backgroundColorUpdateHover"
-      ],
-      [
-        "--backgroundColorUpdate",
-        "--backgroundColorUpdateHover"
-      ],
-      [
-        "--backgroundColorHighlightUpdate",
-        "--borderColorDefault"
-      ]
+      ["--backgroundColorDisabled", "--backgroundColorHover"],
+      ["--backgroundColorHover", "--backgroundColorUpdateHover"],
+      ["--backgroundColorUpdate", "--backgroundColorUpdateHover"],
+      ["--backgroundColorHighlightUpdate", "--borderColorDefault"]
     ]
   },
   "dark": {
     "direction": "ascending",
     "order": [
-      [
-        "--backgroundColorWeakOnBaseBG",
-        "--backgroundColorWeak"
-      ],
-      [
-        "--backgroundColorDefault",
-        "--backgroundColorBase",
-        "--backgroundColorSchemeBase"
-      ],
+      ["--backgroundColorWeakOnBaseBG", "--backgroundColorWeak"],
+      ["--backgroundColorDefault", "--backgroundColorBase", "--backgroundColorSchemeBase"],
       [
         "--backgroundColorDisabled",
         "--backgroundColorDsabled",
@@ -65,10 +28,7 @@
         "--backgroundColorPrimary",
         "--backgroundColorHighlightUpdate"
       ],
-      [
-        "--backgroundColorHover",
-        "--backgroundColorUpdateHover"
-      ]
+      ["--backgroundColorHover", "--backgroundColorUpdateHover"]
     ],
     "distinct": []
   }

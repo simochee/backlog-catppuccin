@@ -1,10 +1,5 @@
 {
-  "images": [
-    "--nuui-bg-ai-default",
-    "--nuui-bg-ai-hover",
-    "--nuui-border-ai",
-    "--nuui-icon-ai"
-  ],
+  "images": ["--nuui-bg-ai-default", "--nuui-bg-ai-hover", "--nuui-border-ai", "--nuui-icon-ai"],
   "names": [
     "--nuui-bg-ai-default",
     "--nuui-bg-ai-hover",

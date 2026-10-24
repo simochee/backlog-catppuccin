@@ -3,7 +3,8 @@ import valueParser from 'postcss-value-parser';
 import colorNames from 'color-name';
 import { gunzipSync } from 'node:zlib';
 
-export const pageURL = process.env.BACKLOG_PAGE_URL || 'https://simochee.backlog.com/this-page-does-not-exist';
+export const pageURL =
+  process.env.BACKLOG_PAGE_URL || 'https://simochee.backlog.com/this-page-does-not-exist';
 
 export async function download(url, allow404 = false, skip404 = false) {
   const response = await fetch(url, { redirect: 'error', signal: AbortSignal.timeout(30000) });
@@ -24,8 +25,12 @@ export async function download(url, allow404 = false, skip404 = false) {
 export function stylesheetURLs(html, speculativeURLs = new Set()) {
   const urls = new Set();
   for (const link of html.matchAll(/<link\b[^>]*>/gi)) {
-    const attrs = Object.fromEntries([...link[0].matchAll(/([\w-]+)\s*=\s*["']([^"']*)["']/g)]
-      .map((match) => [match[1].toLowerCase(), match[2]]));
+    const attrs = Object.fromEntries(
+      [...link[0].matchAll(/([\w-]+)\s*=\s*["']([^"']*)["']/g)].map((match) => [
+        match[1].toLowerCase(),
+        match[2],
+      ]),
+    );
     if (attrs.rel?.split(/\s+/).includes('stylesheet') && attrs.href) {
       const input = new URL(attrs.href.replaceAll('&amp;', '&'), pageURL).href;
       try {
@@ -40,10 +45,17 @@ export function stylesheetURLs(html, speculativeURLs = new Set()) {
     const base = url.match(/^https:\/\/assets\.backlog\.com\/playassets\/[^/]+\//)?.[0];
     if (!base) continue;
     for (const path of [
-      'styles/Common.css', 'styles/ReactApp.css', 'styles/Kanban.css',
-      'styles/Wiki.css', 'styles/Git.css', 'styles/Documents.css',
-      ...['Common', 'ReactApp', 'Kanban', 'Wiki', 'Git', 'Documents'].map((name) => `styles_nu-ui/${name}.css`),
-      'react/static/css/index.css', 'react/global-bar/static/css/main.css',
+      'styles/Common.css',
+      'styles/ReactApp.css',
+      'styles/Kanban.css',
+      'styles/Wiki.css',
+      'styles/Git.css',
+      'styles/Documents.css',
+      ...['Common', 'ReactApp', 'Kanban', 'Wiki', 'Git', 'Documents'].map(
+        (name) => `styles_nu-ui/${name}.css`,
+      ),
+      'react/static/css/index.css',
+      'react/global-bar/static/css/main.css',
     ]) {
       const candidate = new URL(path, base).href;
       if (!urls.has(candidate)) speculativeURLs.add(candidate);
@@ -54,7 +66,12 @@ export function stylesheetURLs(html, speculativeURLs = new Set()) {
 
 export function validateStylesheetURL(input) {
   const url = new URL(input);
-  if (url.protocol !== 'https:' || url.hostname !== 'assets.backlog.com' || url.username || url.password) {
+  if (
+    url.protocol !== 'https:' ||
+    url.hostname !== 'assets.backlog.com' ||
+    url.username ||
+    url.password
+  ) {
     throw new Error('Stylesheets must use HTTPS on assets.backlog.com');
   }
   return url.href;
@@ -69,11 +86,27 @@ export function inspectCSS(css) {
   const images = new Set();
   for (const decl of declarations) {
     if (/[\w-]+-gradient\s*\(/i.test(decl.value)) images.add(decl.prop);
-    if (/gradient\s*\(/i.test(decl.value) || /(?:^|\s)-?(?:\d*\.)?\d+(?:px|rem|em)\b/i.test(decl.value) && /(?:rgba?\(|#[\da-f]|var\()/i.test(decl.value)) composites.add(decl.prop);
-    let isColor = decl.prop.endsWith('-rgb') && /^\s*[\d.]+\s*,\s*[\d.]+\s*,\s*[\d.]+\s*$/.test(decl.value);
+    if (
+      /gradient\s*\(/i.test(decl.value) ||
+      (/(?:^|\s)-?(?:\d*\.)?\d+(?:px|rem|em)\b/i.test(decl.value) &&
+        /(?:rgba?\(|#[\da-f]|var\()/i.test(decl.value))
+    )
+      composites.add(decl.prop);
+    let isColor =
+      decl.prop.endsWith('-rgb') && /^\s*[\d.]+\s*,\s*[\d.]+\s*,\s*[\d.]+\s*$/.test(decl.value);
     valueParser(decl.value).walk((node) => {
-      if (node.type === 'function' && /^(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch|color|color-mix)$/i.test(node.value)) isColor = true;
-      if (node.type === 'word' && (/^#[\da-f]{3,8}$/i.test(node.value) || Object.hasOwn(colorNames, node.value.toLowerCase()) || /^(transparent|currentcolor)$/i.test(node.value))) isColor = true;
+      if (
+        node.type === 'function' &&
+        /^(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch|color|color-mix)$/i.test(node.value)
+      )
+        isColor = true;
+      if (
+        node.type === 'word' &&
+        (/^#[\da-f]{3,8}$/i.test(node.value) ||
+          Object.hasOwn(colorNames, node.value.toLowerCase()) ||
+          /^(transparent|currentcolor)$/i.test(node.value))
+      )
+        isColor = true;
     });
     if (isColor) colors.add(decl.prop);
   }
@@ -96,26 +129,45 @@ export function inspectCSS(css) {
       }
     }
   } while (dependenciesChanged);
-  return { images: [...images].sort(), names: [...colors].sort(), composites: [...composites].filter((name) => colors.has(name)).sort() };
+  return {
+    images: [...images].sort(),
+    names: [...colors].sort(),
+    composites: [...composites].filter((name) => colors.has(name)).sort(),
+  };
 }
 
 export async function loadStylesheets(extraURLs = []) {
   const validatedExtras = extraURLs.filter(Boolean).map(validateStylesheetURL);
   const speculativeURLs = new Set();
-  const urls = [...new Set([...stylesheetURLs(await download(pageURL, true), speculativeURLs), ...validatedExtras])];
-  const stylesheets = await Promise.all(urls.map(async (url) => {
-    const css = await download(url, false, speculativeURLs.has(url) && !validatedExtras.includes(url));
-    if (css === null) return null;
-    console.error(`Source: ${url}`);
-    return { url, css };
-  }));
+  const urls = [
+    ...new Set([
+      ...stylesheetURLs(await download(pageURL, true), speculativeURLs),
+      ...validatedExtras,
+    ]),
+  ];
+  const stylesheets = await Promise.all(
+    urls.map(async (url) => {
+      const css = await download(
+        url,
+        false,
+        speculativeURLs.has(url) && !validatedExtras.includes(url),
+      );
+      if (css === null) return null;
+      console.error(`Source: ${url}`);
+      return { url, css };
+    }),
+  );
   return stylesheets.filter(Boolean);
 }
 
 export async function extract(extraURLs = []) {
   const stylesheets = await loadStylesheets(extraURLs);
   const result = inspectCSS(stylesheets.map(({ css }) => css).join('\n'));
-  return { names: discoveredColorNames(result), composites: result.composites, total: result.names.length };
+  return {
+    names: discoveredColorNames(result),
+    composites: result.composites,
+    total: result.names.length,
+  };
 }
 
 export function discoveredColorNames({ names, composites }, { requireNu = false } = {}) {

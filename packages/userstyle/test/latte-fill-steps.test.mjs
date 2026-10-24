@@ -10,12 +10,20 @@ test('Latte fill corrections are the first 0.1% step reaching the label floor', 
   const p = palettes.latte;
   const latte = postcss.parse((await compile('latte', source, library, 'latte', 'rosewater')).css);
   let root;
-  latte.walkRules((rule) => { if (rule.selector === sharedTokenScope) root = rule; });
+  latte.walkRules((rule) => {
+    if (rule.selector === sharedTokenScope) root = rule;
+  });
   const values = rootValues(root);
-  for (const [hue, property] of [['yellow','--commonColorYellow'], ['pink','--commonColorPink'], ['rosewater','--defaultColorAccent']]) {
+  for (const [hue, property] of [
+    ['yellow', '--commonColorYellow'],
+    ['pink', '--commonColorPink'],
+    ['rosewater', '--defaultColorAccent'],
+  ]) {
     const amount = Number(source.match(new RegExp(`@ink-fill-${hue}: ([\\d.]+)%`))[1]);
     assert.ok(contrastRatio(p.base, values.get(property), p.base) >= 2.5);
-    const previous = (await less.render(`a{color:darken(${p[hue]},${amount - 0.1}%);}`)).css.match(/color: ([^;]+)/)[1];
+    const previous = (await less.render(`a{color:darken(${p[hue]},${amount - 0.1}%);}`)).css.match(
+      /color: ([^;]+)/,
+    )[1];
     assert.ok(contrastRatio(p.base, previous, p.base) < 2.5);
   }
 });

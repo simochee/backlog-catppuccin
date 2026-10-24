@@ -12,7 +12,11 @@ for (const [flavor, css] of compiled) {
       for (const [ink, background] of nuContrastPairs()) {
         if (!values.get(`--nuui-${background}`).startsWith('rgba(')) continue;
         for (const surface of ['bg-default', 'bg-subtle', 'bg-floating']) {
-          const ratio = contrastRatio(values.get(`--nuui-${ink}`), values.get(`--nuui-${background}`), values.get(`--nuui-${surface}`));
+          const ratio = contrastRatio(
+            values.get(`--nuui-${ink}`),
+            values.get(`--nuui-${background}`),
+            values.get(`--nuui-${surface}`),
+          );
           assert.ok(ratio >= 3, `${ink} / ${background} over ${surface}: ${ratio}`);
         }
       }
@@ -23,7 +27,9 @@ for (const [flavor, css] of compiled) {
 test('raised-surface remaps are checked independently of the default surface', () => {
   for (const surface of ['bg-subtle', 'bg-floating']) {
     const nu = styleSubsets(compiled.get('frappe')).nu;
-    nu.walkDecls(`--nuui-${surface}`, (decl) => { decl.value = palettes.frappe.red; });
+    nu.walkDecls(`--nuui-${surface}`, (decl) => {
+      decl.value = palettes.frappe.red;
+    });
     assert.throws(() => checkNuStyle(nu, 'frappe', () => {}), new RegExp(`over ${surface}`));
   }
 });
