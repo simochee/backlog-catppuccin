@@ -65,8 +65,8 @@ for (const flavor of ['latte','frappe','macchiato','mocha']) {
     assert.equal(rule('textarea','caret-color'), p.rosewater);
     assert.match(checkSharedContrast(css, {light:flavor, dark:flavor}), /header=/);
     assert.match(checkSharedAllowlist(css), /all match/);
-    assert.notEqual(token('--backgroundColorSchemeBase'), token('--backgroundColorDefault'));
-    assert.equal(token('--backgroundColorSchemeBase'), flavor === 'latte' ? p.mantle : p.surface0);
+    assert.equal(token('--backgroundColorSchemeBase'), p.base);
+    assert.equal(token('--backgroundColorSchemeBase'), token('--backgroundColorDefault'));
     for (const selector of ['.Code-table .Code-table_content_separator', '.code-view__header']) {
       const hue = selector.includes('header') ? 'pink' : 'peach';
       const background = rule(selector,'background-color');
@@ -88,7 +88,7 @@ for (const flavor of ['latte','frappe','macchiato','mocha']) {
 
 
 test('source checks reject opaque hue mixtures, large corrections, blanket ink and raw colors', () => {
-  for (const source of ['--tint: mix(@red, @base, 20%);', '--ink: darken(@yellow, 21%);', '#nuInk(@color) { @amount: if((@color = @pink), 35%, 0%); @result: darken(@color, @amount); }', '--ink: #ink(@pink; 35%)[@result];', '--hover: #state(@red; 11%);', '@inkWeight: 40%;', '--color: #ff0000;', 'color: rgb(1, 2, 3);']) {
+  for (const source of ['--tint: mix(@red, @base, 20%);', '--ink: darken(@yellow, 21%);', '@ink-tint-pink: 35%;', '@ink-tint-pink: -1%;', '@ink-tint-pink: 10;', '--hover: #state(@red; 11%);', '@inkWeight: 40%;', '--color: #ff0000;', 'color: rgb(1, 2, 3);']) {
     assert.throws(() => checkDerivedSource(source));
   }
   assert.match(checkDerivedSource('--neutral: mix(@surface0, @surface1, 50%); --tint: fade(@green, 20%);'), /PASS/);
@@ -105,8 +105,8 @@ test('Latte marker inks use the first passing 0.1% correction and dark hues stay
     for (const [marker, hue] of Object.entries(markers)) {
       const actual = values.get(`--nuui-text-marker-${marker}`);
       if (flavor !== 'latte') { assert.equal(actual, p[hue]); continue; }
-      const background = `rgba(${rgb(p[hue]).join(',')},0.3)`;
-      const amount = Array.from({length:201},(_,i)=>i/10).find((amount) => contrastRatio(colorString(darken(p[hue],amount)), background,p.base) >= 3 && contrastRatio(colorString(darken(p[hue],amount)),p.base,p.base) >= 3);
+      const background = values.get(`--nuui-bg-marker-${marker}-highlight`);
+      const amount = Array.from({length:201},(_,i)=>i/10).find((amount) => [p.base,p.mantle].every((surface) => contrastRatio(colorString(darken(p[hue],amount)), background,surface) >= 3 && contrastRatio(colorString(darken(p[hue],amount)),surface,surface) >= 3));
       assert.ok(amount !== undefined && amount <= 20);
       assert.deepEqual(rgb(actual), darken(p[hue],amount));
     }

@@ -4,10 +4,10 @@
     "order": [
       [
         "--backgroundColorDefault",
-        "--backgroundColorBase"
+        "--backgroundColorBase",
+        "--backgroundColorSchemeBase"
       ],
       [
-        "--backgroundColorSchemeBase",
         "--backgroundColorWeakOnBaseBG",
         "--backgroundColorWeak"
       ],
@@ -43,10 +43,6 @@
       [
         "--backgroundColorHighlightUpdate",
         "--borderColorDefault"
-      ],
-      [
-        "--backgroundColorDefault",
-        "--backgroundColorSchemeBase"
       ]
     ]
   },
@@ -59,10 +55,10 @@
       ],
       [
         "--backgroundColorDefault",
-        "--backgroundColorBase"
+        "--backgroundColorBase",
+        "--backgroundColorSchemeBase"
       ],
       [
-        "--backgroundColorSchemeBase",
         "--backgroundColorDisabled",
         "--backgroundColorDsabled",
         "--backgroundColorUpdate",
@@ -74,11 +70,6 @@
         "--backgroundColorUpdateHover"
       ]
     ],
-    "distinct": [
-      [
-        "--backgroundColorDefault",
-        "--backgroundColorSchemeBase"
-      ]
-    ]
+    "distinct": []
   }
 }

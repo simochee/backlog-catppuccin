@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import postcss from 'postcss';
 import { selectorSpecificity, compare } from '@csstools/selector-specificity';
 import selectorParser from 'postcss-selector-parser';
-import { compile, legacyOverrideScope, sharedTokenScope, legacyDarkScope, legacyScope, checkErrorPageExclusion, checkOverrides, tokenOverrides, scopePattern } from '../scripts/compile.mjs';
+import { compile, legacyOverrideScope, sharedTokenScope, legacyDarkScope, legacyScope, checkErrorPageExclusion, styleSubsets, checkOverrides, tokenOverrides, scopePattern } from '../scripts/compile.mjs';
 
 const source = await readFile(new URL('../catppuccin.user.less', import.meta.url), 'utf8');
 const library = `#lib() { .palette() {
@@ -27,7 +27,8 @@ for (const flavor of ['latte', 'frappe', 'macchiato', 'mocha']) {
   test(`${flavor} compiled rules exclude error pages and preserve component tokens and disabled states`, async () => {
     const css = postcss.parse((await compile(flavor, source, library)).css);
     checkOverrides(css);
-    checkErrorPageExclusion(css);
+    checkErrorPageExclusion(styleSubsets(css).legacy);
+    checkErrorPageExclusion(styleSubsets(css).nu, 'new');
     const roots = [];
     css.walkRules((rule) => { if (rule.selector === sharedTokenScope) roots.push(rule); });
     assert.equal(roots[0].nodes.find((decl) => decl.prop === '--iconColorWeak').value, flavor === 'latte' ? '#333333' : '#444444');
