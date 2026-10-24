@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import less from 'less';
 import postcss from 'postcss';
 import { download } from './source.mjs';
+import expectedOrder from '../test/fixtures/neutral-order.json' with { type: 'json' };
 
 const libraryURL = 'https://userstyles.catppuccin.com/lib/std/v1.less';
 const isRGB = (name) => /-rgb$/.test(name) || name === '--rgb-accent';
@@ -16,38 +17,69 @@ export async function compile(flavor, source, library, darkFlavor = flavor, acce
   });
 }
 
-// Neutral surfaces only; accent/project backgrounds have their own ordering.
-export const neutralBackgrounds = [
-  '--backgroundColorSchemeBase', '--backgroundColorWeakOnBaseBG',
-  '--backgroundColorWeak', '--backgroundColorDefault', '--backgroundColorBase',
-  '--backgroundColorDisabled', '--backgroundColorDsabled', '--backgroundColorHover',
-  '--backgroundColorUpdate', '--backgroundColorPrimary', '--backgroundColorUpdateHover',
-  '--backgroundColorHighlightUpdate',
-];
-
-function lightness(value) {
-  const hex = value.trim().replace(/^#([\da-f])([\da-f])([\da-f])$/i, '#$1$1$2$2$3$3');
-  if (!/^#[\da-f]{6}$/i.test(hex)) throw new Error(`Invalid neutral color: ${value}`);
-  const channels = hex.slice(1).match(/../g).map((channel) => parseInt(channel, 16));
-  return (Math.max(...channels) + Math.min(...channels)) / 510;
+export function parseColor(value, property) {
+  const input = value?.trim() || '';
+  const hex = input.replace(/^#([\da-f])([\da-f])([\da-f])$/i, '#$1$1$2$2$3$3');
+  if (/^#[\da-f]{6}$/i.test(hex)) {
+    return hex.slice(1).match(/../g).map((channel) => parseInt(channel, 16));
+  }
+  const functional = input.match(/^(rgb|rgba)\(([^)]+)\)$/i);
+  if (functional) {
+    const parts = functional[2].split(',').map((part) => part.trim());
+    if (parts.length === (functional[1].toLowerCase() === 'rgba' ? 4 : 3) &&
+        parts.every((part) => /^(?:\d*\.)?\d+$/.test(part))) {
+      const channels = parts.slice(0, 3).map(Number);
+      if (channels.every((channel) => channel >= 0 && channel <= 255) &&
+          (parts.length === 3 || Number(parts[3]) <= 1)) return channels;
+    }
+  }
+  throw new Error(`Invalid color: ${property} (${value})`);
 }
 
-export function checkLatteDepth(css) {
+export function checkRGBCounterpart(decl) {
+  if (!isRGB(decl.prop)) return;
+  if (!/^\d+,\s*\d+,\s*\d+$/.test(decl.value)) {
+    throw new Error(`Invalid RGB triplet: ${decl.prop}`);
+  }
+  const colorName = decl.prop === '--rgb-accent' ? '--defaultColorAccent' : decl.prop.slice(0, -4);
+  const counterpart = decl.parent.nodes.find((node) => node.prop === colorName);
+  const channels = parseColor(counterpart?.value, colorName);
+  if (channels.some((channel, index) => channel !== Number(decl.value.split(',')[index]))) {
+    throw new Error(`RGB triplet differs from color: ${decl.prop} / ${colorName}`);
+  }
+}
+
+export function checkNeutralOrder(css, flavor) {
+  const spec = expectedOrder[flavor === 'latte' ? 'latte' : 'dark'];
+  const names = spec.order.flat();
   let checked = 0;
   css.walkRules((rule) => {
     const values = new Map(rule.nodes.filter((node) => node.type === 'decl')
       .map((decl) => [decl.prop, decl.value]));
     if (!values.has('--backgroundColorSchemeBase')) return;
-    const levels = neutralBackgrounds.map((name) => {
-      if (!values.has(name)) throw new Error(`Missing neutral background: ${name}`);
-      return lightness(values.get(name));
-    });
-    if (levels.some((level) => level > levels[0]) || !levels.some((level) => level < levels[0])) {
-      throw new Error(`Latte SchemeBase must be the lightest neutral background: ${rule.selector}`);
+    const levels = new Map(names.map((name) => {
+      const channels = parseColor(values.get(name), name);
+      return [name, (Math.max(...channels) + Math.min(...channels)) / 510];
+    }));
+    const ordered = spec.direction === 'descending' ? names : names.toReversed();
+    for (let index = 1; index < ordered.length; index++) {
+      const previous = ordered[index - 1];
+      const current = ordered[index];
+      if (levels.get(current) > levels.get(previous)) {
+        throw new Error(`${flavor} neutral order: ${previous} / ${current} (${rule.selector})`);
+      }
+    }
+    for (const [left, right] of spec.distinct) {
+      const a = parseColor(values.get(left), left);
+      const b = parseColor(values.get(right), right);
+      if (a.every((channel, index) => channel === b[index])) {
+        throw new Error(`${flavor} states must differ: ${left} / ${right} (${rule.selector})`);
+      }
     }
     checked++;
   });
-  if (!checked) throw new Error('No Latte neutral backgrounds found');
+  if (!checked) throw new Error(`Missing neutral background: --backgroundColorSchemeBase (${flavor})`);
+  return `${flavor} neutral ordering: PASS (${spec.direction}, ${checked} rules)`;
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
@@ -60,26 +92,12 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       let count = 0;
       css.walkDecls(/^--/, (decl) => {
         count++;
-        if (isRGB(decl.prop) && !/^\d+,\s*\d+,\s*\d+$/.test(decl.value)) {
-          throw new Error(`Invalid RGB triplet: ${decl.prop}`);
-        }
-        if (isRGB(decl.prop)) {
-          const colorName = decl.prop === '--rgb-accent' ? '--defaultColorAccent' : decl.prop.slice(0, -4);
-          const counterpart = decl.parent.nodes.find((node) => node.prop === colorName);
-          const hex = counterpart?.value.replace(/^#([\da-f])([\da-f])([\da-f])$/i, '#$1$1$2$2$3$3');
-          if (!/^#[\da-f]{6}$/i.test(hex || '')) throw new Error(`Missing color counterpart: ${decl.prop}`);
-          const channels = hex.slice(1).match(/../g).map((channel) => parseInt(channel, 16));
-          if (channels.some((channel, index) => channel !== Number(decl.value.split(',')[index]))) {
-            throw new Error(`RGB triplet differs from color: ${decl.prop}`);
-          }
-        }
+        checkRGBCounterpart(decl);
       });
       if (!count) throw new Error('Compiled output has no assignments');
-      if (flavor === 'latte') {
-        checkLatteDepth(css);
-        console.log('Latte neutral depth: PASS (SchemeBase is lightest)');
-      }
+      const ordering = checkNeutralOrder(css, flavor);
       console.log(`${flavor}: PASS (${count} custom-property assignments)`);
+      console.log(ordering);
     }
     const mixed = postcss.parse((await compile('latte', source, library, 'mocha', 'green')).css, { from: undefined, map: false });
     const palettes = {};
