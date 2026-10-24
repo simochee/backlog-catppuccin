@@ -2,7 +2,7 @@
 @name Backlog Catppuccin
 @namespace github.com/simochee/backlog-catppuccin
 @homepageURL https://github.com/simochee/backlog-catppuccin
-@version 2026.10.24
+@version 2026.10.25
 @updateURL https://github.com/simochee/backlog-catppuccin/raw/main/catppuccin.user.less
 @supportURL https://github.com/simochee/backlog-catppuccin/issues
 @description Soothing pastel theme for Backlog
@@ -17,6 +17,8 @@
 
 @import "https://userstyles.catppuccin.com/lib/std/v1.less";
 
+@newDesignMarker: ~':has(> head > link[href*="/styles_nu-ui/"])';
+
 @-moz-document regexp("https?://([a-zA-Z0-9-]+\\.)+backlog\\.(com|jp)(:[0-9]+)?/.*"), regexp("https?://([a-zA-Z0-9-]+\\.)+backlogtool\\.com(:[0-9]+)?/.*") {
     // Repeated :root raises specificity above site dark/project-theme rules.
     :root:root:root:root:root:where(:not(:has(> body.Page--error))) {
@@ -29,127 +31,127 @@
       body { #catppuccin(@darkFlavor); }
       #tooltips(@darkFlavor);
     }
-    :root:root:root:root:root:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) {
+    :root:root:root:root:root:where(:not(:has(> body.Page--error), @{newDesignMarker})) {
       #components(@lightFlavor);
       body { #components(@lightFlavor); }
     }
-    :root:root:root:root:root:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))).dark-mode {
+    :root:root:root:root:root:where(:not(:has(> body.Page--error), @{newDesignMarker})).dark-mode {
       #components(@darkFlavor);
       body { #components(@darkFlavor); }
     }
     // BEGIN GENERATED DARK TEXT (npm run generate:dark-text)
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .Page--credit-card .credit-card-form-table .card-ok,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .Page--edit-wiki .card.-wiki-migration.is_done,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .Page--edit-wiki .card.-wiki-migration.is_done .title,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .Page--edit-wiki .card.-wiki-migration.is_not-yet,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .Page--edit-wiki .card.-wiki-migration.is_not-yet .title,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .Page--find-wiki .card.-wiki-migration.is_done,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .Page--find-wiki .card.-wiki-migration.is_done .title,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .Page--find-wiki .card.-wiki-migration.is_not-yet,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .Page--find-wiki .card.-wiki-migration.is_not-yet .title,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .Page--integrations-setting .chatwork-help,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .Page--profile-list .member-list__launch-menu-item,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .Page--profile-list .member-list__launch-menu-item:hover,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .Page--view-wiki .card.-wiki-migration.is_done,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .Page--view-wiki .card.-wiki-migration.is_done .title,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .Page--view-wiki .card.-wiki-migration.is_not-yet,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .Page--view-wiki .card.-wiki-migration.is_not-yet .title,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .badge--default,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .button--primary,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .button-group__link.is_active,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .calendar__title,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .dashboard-announce-list__category,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .dropdown-box__header-nav-label,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .dropdown-box__header-nav-link,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .dropdown-box__title,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .dropdown-box__toggle-button,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .dropdown-box__toggle-button:not(.is_active):focus,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .dropdown-box__toggle-button:not(.is_active):hover,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .filter-nav.-wiki-tag .filter-nav__link.is_active,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .filter-nav.-wiki-tag .filter-nav__link.is_active .filter-nav__num,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .filter-nav.-wiki-tag .filter-nav__link:focus,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .filter-nav.-wiki-tag .filter-nav__link:focus .filter-nav__num,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .filter-nav.-wiki-tag .filter-nav__link:hover,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .filter-nav.-wiki-tag .filter-nav__link:hover .filter-nav__num,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .filter-nav__link.is_active,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .filter-nav__link.is_active .filter-nav__num,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .filter-nav__link:focus,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .filter-nav__link:focus .filter-nav__num,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .filter-nav__link:hover,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .filter-nav__link:hover .filter-nav__num,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .icon-button--ai.is_active ._assistive-text,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .icon-button--ai.is_active svg.icon,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .icon-button--ai:active ._assistive-text,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .icon-button--ai:focus-visible ._assistive-text,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .icon-button--ai:focus-visible svg.icon,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .icon-button--ai:hover ._assistive-text,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .icon-button--ai:hover svg.icon,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .icon-button--default.is_active .iconic-text,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .icon-button--default:focus-visible .iconic-text,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .icon-button--default:hover .iconic-text,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .icon-button--default[aria-expanded=true]:not(.-disabled-active) .iconic-text,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .icon-button.-with-text.is_active ._assistive-text,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .icon-button.-with-text:focus-visible ._assistive-text,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .icon-button.-with-text:hover ._assistive-text,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .icon-button.-with-text[aria-expanded=true]:not(.-disabled-active) ._assistive-text,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .input-checkbox.-inverse+label,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .issue-csv-import-dialog .confirmation-dialog .confirmation-dialog-title,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .message--error,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .message--integration:not(.-for-normal-users) .button:hover,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .message--success,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .message--warning,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .modal__title,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .pager__link.is_current,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .pager__link:focus,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .pager__link:hover,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .pill,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .project-list .project-launch-menu__link,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .project-list__item:focus-within .project-launch-menu__text,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .project-list__item:focus-within .project-list__key,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .project-list__item:focus-within .project-list__name,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .project-list__item:hover .project-launch-menu__text,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .project-list__item:hover .project-list__key,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .project-list__item:hover .project-list__name,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .slide-in__title,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .status,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .status-label,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .stream-update span.Action,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .view-issue-file-upload__tooltip,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) [class^=Page--wiki] .card.-wiki-migration.is_done,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) [class^=Page--wiki] .card.-wiki-migration.is_done .title,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) [class^=Page--wiki] .card.-wiki-migration.is_not-yet,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) [class^=Page--wiki] .card.-wiki-migration.is_not-yet .title {
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .Page--credit-card .credit-card-form-table .card-ok,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .Page--edit-wiki .card.-wiki-migration.is_done,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .Page--edit-wiki .card.-wiki-migration.is_done .title,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .Page--edit-wiki .card.-wiki-migration.is_not-yet,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .Page--edit-wiki .card.-wiki-migration.is_not-yet .title,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .Page--find-wiki .card.-wiki-migration.is_done,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .Page--find-wiki .card.-wiki-migration.is_done .title,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .Page--find-wiki .card.-wiki-migration.is_not-yet,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .Page--find-wiki .card.-wiki-migration.is_not-yet .title,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .Page--integrations-setting .chatwork-help,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .Page--profile-list .member-list__launch-menu-item,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .Page--profile-list .member-list__launch-menu-item:hover,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .Page--view-wiki .card.-wiki-migration.is_done,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .Page--view-wiki .card.-wiki-migration.is_done .title,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .Page--view-wiki .card.-wiki-migration.is_not-yet,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .Page--view-wiki .card.-wiki-migration.is_not-yet .title,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .badge--default,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .button--primary,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .button-group__link.is_active,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .calendar__title,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .dashboard-announce-list__category,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .dropdown-box__header-nav-label,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .dropdown-box__header-nav-link,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .dropdown-box__title,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .dropdown-box__toggle-button,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .dropdown-box__toggle-button:not(.is_active):focus,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .dropdown-box__toggle-button:not(.is_active):hover,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .filter-nav.-wiki-tag .filter-nav__link.is_active,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .filter-nav.-wiki-tag .filter-nav__link.is_active .filter-nav__num,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .filter-nav.-wiki-tag .filter-nav__link:focus,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .filter-nav.-wiki-tag .filter-nav__link:focus .filter-nav__num,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .filter-nav.-wiki-tag .filter-nav__link:hover,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .filter-nav.-wiki-tag .filter-nav__link:hover .filter-nav__num,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .filter-nav__link.is_active,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .filter-nav__link.is_active .filter-nav__num,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .filter-nav__link:focus,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .filter-nav__link:focus .filter-nav__num,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .filter-nav__link:hover,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .filter-nav__link:hover .filter-nav__num,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .icon-button--ai.is_active ._assistive-text,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .icon-button--ai.is_active svg.icon,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .icon-button--ai:active ._assistive-text,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .icon-button--ai:focus-visible ._assistive-text,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .icon-button--ai:focus-visible svg.icon,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .icon-button--ai:hover ._assistive-text,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .icon-button--ai:hover svg.icon,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .icon-button--default.is_active .iconic-text,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .icon-button--default:focus-visible .iconic-text,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .icon-button--default:hover .iconic-text,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .icon-button--default[aria-expanded=true]:not(.-disabled-active) .iconic-text,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .icon-button.-with-text.is_active ._assistive-text,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .icon-button.-with-text:focus-visible ._assistive-text,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .icon-button.-with-text:hover ._assistive-text,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .icon-button.-with-text[aria-expanded=true]:not(.-disabled-active) ._assistive-text,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .input-checkbox.-inverse+label,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .issue-csv-import-dialog .confirmation-dialog .confirmation-dialog-title,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .message--error,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .message--integration:not(.-for-normal-users) .button:hover,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .message--success,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .message--warning,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .modal__title,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .pager__link.is_current,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .pager__link:focus,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .pager__link:hover,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .pill,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .project-list .project-launch-menu__link,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .project-list__item:focus-within .project-launch-menu__text,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .project-list__item:focus-within .project-list__key,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .project-list__item:focus-within .project-list__name,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .project-list__item:hover .project-launch-menu__text,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .project-list__item:hover .project-list__key,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .project-list__item:hover .project-list__name,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .slide-in__title,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .status,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .status-label,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .stream-update span.Action,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .view-issue-file-upload__tooltip,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) [class^=Page--wiki] .card.-wiki-migration.is_done,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) [class^=Page--wiki] .card.-wiki-migration.is_done .title,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) [class^=Page--wiki] .card.-wiki-migration.is_not-yet,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) [class^=Page--wiki] .card.-wiki-migration.is_not-yet .title {
       color: var(--backgroundColorSchemeBase);
     }
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .calendar__day.is_active,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .calendar__day.is_selected,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .icon-button--ai:active svg.icon,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .icon-button--primary ._assistive-text,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .icon-button--primary svg.icon,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .pill--issue-type-1,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .pill--issue-type-10,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .pill--issue-type-2,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .pill--issue-type-3,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .pill--issue-type-4,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .pill--issue-type-5,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .pill--issue-type-6,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .pill--issue-type-7,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .pill--issue-type-8,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .pill--issue-type-9 {
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .calendar__day.is_active,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .calendar__day.is_selected,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .icon-button--ai:active svg.icon,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .icon-button--primary ._assistive-text,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .icon-button--primary svg.icon,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .pill--issue-type-1,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .pill--issue-type-10,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .pill--issue-type-2,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .pill--issue-type-3,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .pill--issue-type-4,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .pill--issue-type-5,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .pill--issue-type-6,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .pill--issue-type-7,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .pill--issue-type-8,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .pill--issue-type-9 {
       color: var(--backgroundColorSchemeBase) !important;
     }
     // END GENERATED DARK TEXT
 
     // Confirmed non-accent variant: retain the site's weak text on transparency.
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .pill--square.-subtasking {
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .pill--square.-subtasking {
       color: var(--textColorWeak);
     }
-    :root:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))):not(.dark-mode) body.Page--view-kanban .card {
+    :root:where(:not(:has(> body.Page--error), @{newDesignMarker})):not(.dark-mode) body.Page--view-kanban .card {
       background-color: var(--backgroundColorSchemeBase);
     }
 
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .button--primary.is_disabled,
-    .dark-mode:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))) .button--primary[disabled] {
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .button--primary.is_disabled,
+    .dark-mode:where(:not(:has(> body.Page--error), @{newDesignMarker})) .button--primary[disabled] {
       #disabledPrimary(@darkFlavor);
     }
 
@@ -164,14 +166,14 @@
       each(@wikiStates, .(@entry) {
         @state: extract(@entry, 1);
         @scale: extract(@entry, 2);
-        :root:root:root:root:root:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))).dark-mode @{page} .card.-wiki-migration.@{state} {
+        :root:root:root:root:root:where(:not(:has(> body.Page--error), @{newDesignMarker})).dark-mode @{page} .card.-wiki-migration.@{state} {
           a { color: var(--backgroundColorSchemeBase); }
           .button { border-color: var(--backgroundColorSchemeBase); }
           & when (@state = is_not-yet) {
             .wiki-migration-image svg path { fill: var(--backgroundColorSchemeBase); }
           }
         }
-        :root:root:root:root:root:where(:not(:has(> body.Page--error), :has(> head > link[href*="/styles_nu-ui/"]))):not(.dark-mode) @{page} .card.-wiki-migration.@{state} {
+        :root:root:root:root:root:where(:not(:has(> body.Page--error), @{newDesignMarker})):not(.dark-mode) @{page} .card.-wiki-migration.@{state} {
           border-color: ~"var(--@{scale}ColorScaleAccent)";
           & when (@state = is_not-yet) {
             .wiki-migration-image svg path { fill: ~"var(--@{scale}ColorScaleText)"; }
@@ -193,10 +195,19 @@
 
     #tooltips(@flavor) {
       #lib.palette();
-      .simptip-success { --tooltipBaseColor: @green !important; --tooltip-base-color: @green !important; }
-      .simptip-info { --tooltipBaseColor: @blue !important; --tooltip-base-color: @blue !important; }
-      .simptip-danger, .simptip-error { --tooltipBaseColor: @red !important; --tooltip-base-color: @red !important; }
-      .simptip-warning { --tooltipBaseColor: @yellow !important; --tooltip-base-color: @yellow !important; }
+      @darkInk: if((@flavor = latte), @text, @crust);
+      @lightInk: if((@flavor = latte), @base, @text);
+      #variant(@background) {
+        @darkRatio: ((max(luma(@background), luma(@darkInk)) + 5%) / (min(luma(@background), luma(@darkInk)) + 5%));
+        @lightRatio: ((max(luma(@background), luma(@lightInk)) + 5%) / (min(luma(@background), luma(@lightInk)) + 5%));
+        --tooltipBaseColor: @background !important;
+        --tooltip-base-color: @background !important;
+        --tooltip-text-color: if((@darkRatio > @lightRatio), @darkInk, @lightInk) !important;
+      }
+      .simptip-success { #variant(@green); }
+      .simptip-info { #variant(@blue); }
+      .simptip-danger, .simptip-error { #variant(@red); }
+      .simptip-warning { #variant(@yellow); }
     }
 
     #roles(@flavor) {

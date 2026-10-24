@@ -3,7 +3,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import postcss from 'postcss';
 import selectorParser from 'postcss-selector-parser';
 import { selectorSpecificity, compare } from '@csstools/selector-specificity';
-import { darkScope } from './guards.mjs';
+import { legacyDarkScope, newDesignMarker } from './guards.mjs';
 import { loadStylesheets } from './source.mjs';
 
 export const blockStart = '    // BEGIN GENERATED DARK TEXT (npm run generate:dark-text)';
@@ -125,7 +125,7 @@ export function findDarkText(stylesheets) {
   return { a: aSelectors, b: selectors(b).filter((selector) => !aSelectors.includes(selector)), overrides, conflicts };
 }
 
-export const guardDarkSelector = (selector) => selector.replace(/^\.dark-mode(?=\s)/, darkScope);
+export const guardDarkSelector = (selector) => selector.replace(/^\.dark-mode(?=\s)/, legacyDarkScope);
 
 export function renderDarkText({ overrides }) {
   if (!overrides.length) throw new Error('No dark-text selectors discovered');
@@ -137,7 +137,7 @@ export function renderDarkText({ overrides }) {
   }
   const rules = [...groups].map(([key, selectors]) => {
     const [context, important] = JSON.parse(key);
-    let rule = `${[...selectors].sort().map((selector) => `    ${guardDarkSelector(selector)}`).join(',\n')} {\n      color: var(--backgroundColorSchemeBase)${important ? ' !important' : ''};\n    }`;
+    let rule = `${[...selectors].sort().map((selector) => `    ${guardDarkSelector(selector).replace(newDesignMarker, '@{newDesignMarker}')}`).join(',\n')} {\n      color: var(--backgroundColorSchemeBase)${important ? ' !important' : ''};\n    }`;
     for (const [name, params] of [...context].reverse()) rule = `    @${name} ${params} {\n${rule}\n    }`;
     return rule;
   });

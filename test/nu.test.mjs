@@ -4,9 +4,9 @@ import { readFile } from 'node:fs/promises';
 import postcss from 'postcss';
 import selectorParser from 'postcss-selector-parser';
 import { selectorSpecificity, compare } from '@csstools/selector-specificity';
-import { errorPageGuard, legacyGuard, nuGuard, rootTokenScope, rootOverrideScope, nuTokenScope } from '../scripts/guards.mjs';
-import { checkErrorPageExclusion, checkNuStyle, nuContrastPairs } from '../scripts/compile.mjs';
-import { coverageSets, missingAssignments } from '../scripts/coverage.mjs';
+import { errorPageGuard, legacyGuard, newDesignGuard, sharedTokenScope, legacyOverrideScope, newDesignTokenScope } from '../scripts/guards.mjs';
+import { checkErrorPageExclusion, checkNuStyle, nuContrastPairs, nuDistinctSurfaces, checkTooltipContrast } from '../scripts/compile.mjs';
+import { coverageSets, missingAssignments, discoverCoverage } from '../scripts/coverage.mjs';
 import { inspectCSS } from '../scripts/source.mjs';
 import { findLiterals } from '../scripts/literals.mjs';
 
@@ -35,36 +35,40 @@ test('coverage keeps add-on colors and composites separate from legacy and non-c
 });
 
 test('structural guard check distinguishes token roots, tooltips, components and add-on', () => {
-  for (const selector of [rootTokenScope, `${rootTokenScope}.dark-mode body`, `${rootTokenScope} .simptip-info`]) {
+  for (const selector of [sharedTokenScope, `${sharedTokenScope}.dark-mode body`, `${sharedTokenScope} .simptip-info`]) {
     assert.doesNotThrow(() => checkErrorPageExclusion(postcss.parse(`${selector} {--tooltipBaseColor:red}`)));
   }
-  for (const selector of [`:root${errorPageGuard} .component`, `${rootTokenScope} .component`, `${rootTokenScope} body .component`]) {
+  for (const selector of [`:root${errorPageGuard} .component`, `${sharedTokenScope} .component`, `${sharedTokenScope} body .component`]) {
     for (const declaration of ['color:red', '--tooltipBaseColor:red', '--other:red']) {
       assert.throws(() => checkErrorPageExclusion(postcss.parse(`${selector} {${declaration}}`)), /design guard/);
     }
   }
-  assert.throws(() => checkErrorPageExclusion(postcss.parse(`${rootTokenScope} {color:red}`)), /design guard/);
-  assert.doesNotThrow(() => checkErrorPageExclusion(postcss.parse(`${rootOverrideScope} .component {color:red}`)));
-  for (const guard of [errorPageGuard, legacyGuard, nuGuard.replace('> head > link', 'head link')]) {
+  assert.throws(() => checkErrorPageExclusion(postcss.parse(`${sharedTokenScope} {color:red}`)), /design guard/);
+  assert.doesNotThrow(() => checkErrorPageExclusion(postcss.parse(`${legacyOverrideScope} .component {color:red}`)));
+  for (const guard of [errorPageGuard, legacyGuard, newDesignGuard.replace('> head > link', 'head link')]) {
     assert.throws(() => checkErrorPageExclusion(postcss.parse(`:root${guard} {--nuui-text-default:red}`), true), /design guard/);
   }
-  assert.doesNotThrow(() => checkErrorPageExclusion(postcss.parse(`${nuTokenScope}.dark-mode body {--nuui-text-default:red}`), true));
+  assert.doesNotThrow(() => checkErrorPageExclusion(postcss.parse(`${newDesignTokenScope}.dark-mode body {--nuui-text-default:red}`), true));
 });
 
 test('design guards add zero specificity and add-on body beats site theme declarations', () => {
   const specificity = (selector) => selectorSpecificity(selectorParser().astSync(selector).first);
-  for (const guard of [errorPageGuard, legacyGuard, nuGuard]) assert.deepEqual(specificity(`:root${guard}`), specificity(':root'));
-  assert.ok(compare(specificity(`${nuTokenScope}.dark-mode body`), specificity('.dark-mode body.theme-green:not(.Page--error, .Page--add-space)')) > 0);
+  for (const guard of [errorPageGuard, legacyGuard, newDesignGuard]) assert.deepEqual(specificity(`:root${guard}`), specificity(':root'));
+  assert.ok(compare(specificity(`${newDesignTokenScope}.dark-mode body`), specificity('.dark-mode body.theme-green:not(.Page--error, .Page--add-space)')) > 0);
 });
 
 function validNu() {
   const entries = new Map(nuContrastPairs().flat().map((name) => [name, name.startsWith('bg-') ? '#fff' : '#111']));
-  entries.set('bg-canvas-backdrop', '#ccc');
-  entries.set('bg-canvas-default', '#ddd');
+  entries.set('bg-canvas-backdrop', '#bbb');
+  entries.set('bg-canvas-default', '#eee');
   entries.set('bg-floating', '#fff');
+  entries.set('bg-ghost-hover', '#ccc');
   entries.set('bg-ghost-active', '#eee');
+  entries.set('bg-subtle', '#fff');
+  entries.set('bg-row-header', '#fff');
+  entries.set('bg-disabled', '#ddd');
   const declarations = [...entries].map(([name, value]) => `--nuui-${name}:${value}`).join(';');
-  return postcss.parse(['', ' body', '.dark-mode', '.dark-mode body'].map((mode) => `${nuTokenScope}${mode} {${declarations}}`).join('\n'));
+  return postcss.parse(['', ' body', '.dark-mode', '.dark-mode body'].map((mode) => `${newDesignTokenScope}${mode} {${declarations}}`).join('\n'));
 }
 
 test('add-on checks reject unreadable semantic, marker and navigation pairs and flattened states', () => {
@@ -75,7 +79,7 @@ test('add-on checks reject unreadable semantic, marker and navigation pairs and 
     assert.throws(() => checkNuStyle(css, 'latte'), /contrast/);
   }
   const flat = validNu();
-  flat.first.nodes.find((decl) => decl.prop === '--nuui-bg-ghost-active').value = '#fff';
+  flat.first.nodes.find((decl) => decl.prop === '--nuui-bg-ghost-active').value = '#ccc';
   assert.throws(() => checkNuStyle(flat, 'latte'), /must differ/);
   const order = validNu();
   order.first.nodes.find((decl) => decl.prop === '--nuui-bg-canvas-default').value = '#000';
@@ -84,7 +88,7 @@ test('add-on checks reject unreadable semantic, marker and navigation pairs and 
 
 test('new-design literal triage cannot hide colors behind legacy-only overrides', () => {
   const css = '.component {color:red}';
-  const overrides = `${rootOverrideScope} .component {color:var(--textColorPrimary)}`;
+  const overrides = `${legacyOverrideScope} .component {color:var(--textColorPrimary)}`;
   const urls = ['styles', 'styles_nu-ui'].map((folder) => ({ url: `https://assets.backlog.com/${folder}/Common.css`, css }));
   const report = findLiterals(urls, overrides);
   assert.equal(report.length, 1);
@@ -122,11 +126,11 @@ test('guarded navigation and migration rules use only approved role tokens', asy
   assert.equal(roots, 4);
   for (const [selector, entries] of Object.entries(nuComponentTokens)) {
     const found = [];
-    css.walkRules((rule) => { if (rule.selector === `${nuTokenScope} ${selector}`) found.push(rule); });
+    css.walkRules((rule) => { if (rule.selector === `${newDesignTokenScope} ${selector}`) found.push(rule); });
     assert.equal(found.length, 1, selector);
     assert.deepEqual(Object.fromEntries(found[0].nodes.map((decl) => [decl.prop, decl.value])),
       Object.fromEntries(Object.entries(entries).map(([prop, token]) => [prop, `var(${token})`])));
-    assert.throws(() => checkErrorPageExclusion(postcss.parse(`${nuTokenScope.replace(nuGuard, legacyGuard)} ${selector} {color:red}`), true), /design guard/);
+    assert.throws(() => checkErrorPageExclusion(postcss.parse(`${newDesignTokenScope.replace(newDesignGuard, legacyGuard)} ${selector} {color:red}`), true), /design guard/);
   }
 });
 
@@ -144,4 +148,74 @@ test('Latte solid contrast exceptions retain a strict 2.5 floor and leave other 
   assert.throws(() => checkNuStyle(fixture, 'mocha'), /< 3:1/);
   fixture.first.nodes.find((decl) => decl.prop === '--nuui-text-on-primary').value = '#aaa';
   assert.throws(() => checkNuStyle(fixture, 'latte'), /< 2.5:1/);
+});
+
+
+test('every hosting surface stays distinct from ghost hover and disabled', () => {
+  for (const [left, right] of nuDistinctSurfaces) {
+    const css = validNu();
+    css.first.nodes.find((decl) => decl.prop === `--nuui-${left}`).value = css.first.nodes.find((decl) => decl.prop === `--nuui-${right}`).value;
+    assert.throws(() => checkNuStyle(css, 'mocha'), /must differ/);
+  }
+});
+
+test('live coverage and type parity fail when discovery or assignments are empty', async () => {
+  const { checkNuTokenTypes } = await import('../scripts/compile.mjs');
+  const legacy = { url: 'https://assets.backlog.com/styles/Common.css', css: ':root {--legacy:red}' };
+  const nu = { ...legacy, url: 'https://assets.backlog.com/styles_nu-ui/Common.css' };
+  assert.throws(() => discoverCoverage([legacy]), /No styles_nu-ui/);
+  assert.throws(() => discoverCoverage([nu]), /No --nuui-/);
+  assert.throws(() => discoverCoverage([{ ...nu, css: '' }]), /No color variables/);
+  assert.throws(() => checkNuTokenTypes(postcss.parse(''), inspectCSS(legacy.css)), /No --nuui-/);
+  assert.throws(() => checkNuTokenTypes(postcss.parse(''), inspectCSS(':root {--nuui-text:red}')), /No --nuui-.*assignments/);
+});
+
+test('each userstyle declares the same new-design marker once', async () => {
+  const { newDesignMarker } = await import('../scripts/guards.mjs');
+  for (const style of [source, main]) {
+    assert.equal(style.match(/@newDesignMarker: ~'([^']+)';/)[1], newDesignMarker);
+    assert.equal(style.split(newDesignMarker).length - 1, 1);
+    assert.ok(style.includes('@{newDesignMarker}'));
+  }
+});
+
+test('tooltip contrast checks defaults, every variant, and missing pairs at 3:1', () => {
+  const selectors = ['', '.dark-mode'].flatMap((mode) => ['', ...['success', 'info', 'danger', 'error', 'warning'].map((name) => ` .simptip-${name}`)].map((suffix) => `${sharedTokenScope}${mode}${suffix}`));
+  const css = postcss.parse(selectors.map((selector) => `${selector} {--tooltip-base-color:#fff;--tooltipBaseColor:#fff;--tooltip-text-color:#111}`).join('\n'));
+  assert.match(checkTooltipContrast(css, 'latte'), /PASS/);
+  for (const rule of css.nodes) {
+    const bad = css.clone();
+    bad.nodes[css.nodes.indexOf(rule)].last.value = '#999';
+    assert.throws(() => checkTooltipContrast(bad, 'mocha'), /< 3:1/);
+  }
+  css.last.remove();
+  assert.throws(() => checkTooltipContrast(css, 'latte'), /Missing/);
+});
+
+
+test('only Latte solid success tooltip can use the 2.5 contrast floor', () => {
+  const fixture = () => postcss.parse(['', '.dark-mode'].flatMap((mode) => ['', ...['success', 'info', 'danger', 'error', 'warning'].map((name) => ` .simptip-${name}`)].map((suffix) => `${sharedTokenScope}${mode}${suffix} {--tooltip-base-color:#fff;--tooltipBaseColor:#fff;--tooltip-text-color:#111}`)).join('\n'));
+  for (const flavor of ['latte', 'mocha']) {
+    for (const variant of ['success', 'info', 'danger', 'error', 'warning']) {
+      const css = fixture();
+      css.nodes.find((rule) => rule.selector.endsWith(` .simptip-${variant}`)).last.value = '#999';
+      const messages = [];
+      if (flavor === 'latte' && variant === 'success') {
+        assert.match(checkTooltipContrast(css, flavor, (message) => messages.push(message)), /PASS/);
+        assert.match(messages.join('\n'), /tooltip success.*2\.849:1 >= 2\.5:1/);
+        css.nodes.find((rule) => rule.selector.endsWith(' .simptip-success')).last.value = '#aaa';
+        assert.throws(() => checkTooltipContrast(css, flavor), /< 2.5:1/);
+      } else assert.throws(() => checkTooltipContrast(css, flavor), /< 3:1/);
+    }
+  }
+});
+
+
+test('accent sweep checks only accent-dependent contrast pairs', () => {
+  const css = validNu();
+  css.first.nodes.find((decl) => decl.prop === '--nuui-bg-floating').value = '#000';
+  css.first.nodes.find((decl) => decl.prop === '--nuui-text-on-warning').value = '#fff';
+  assert.match(checkNuStyle(css, 'mocha/green', () => {}, true), /PASS/);
+  css.first.nodes.find((decl) => decl.prop === '--nuui-text-on-primary').value = '#fff';
+  assert.throws(() => checkNuStyle(css, 'mocha/green', () => {}, true), /contrast/);
 });

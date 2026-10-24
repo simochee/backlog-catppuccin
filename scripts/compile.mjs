@@ -3,8 +3,8 @@ import { readFile } from 'node:fs/promises';
 import less from 'less';
 import postcss from 'postcss';
 import selectorParser from 'postcss-selector-parser';
-import { download, loadStylesheets, inspectCSS } from './source.mjs';
-import { escapeSelector, errorPageGuard, legacyGuard, nuGuard, errorPageScope, darkScope, rootTokenScope, rootOverrideScope, nuTokenScope } from './guards.mjs';
+import { download } from './source.mjs';
+import { escapeSelector, errorPageGuard, legacyGuard, newDesignGuard, legacyScope, legacyDarkScope, sharedTokenScope, legacyOverrideScope, newDesignTokenScope } from './guards.mjs';
 import expectedOrder from '../test/fixtures/neutral-order.json' with { type: 'json' };
 
 export const libraryURL = 'https://userstyles.catppuccin.com/lib/std/v1.less';
@@ -103,8 +103,8 @@ export function checkNeutralOrder(css, flavor) {
   return `${flavor} neutral ordering: PASS (${spec.direction}, ${checked} rules)`;
 }
 
-export { errorPageGuard, errorPageGuardPattern, errorPageScope, darkScope, rootTokenScope, rootOverrideScope } from './guards.mjs';
-const flavoredScope = `${escapeSelector(rootOverrideScope)}(?:\\.dark-mode)?(?: body)? `;
+export { errorPageGuard, errorPageGuardPattern, legacyScope, legacyDarkScope, sharedTokenScope, legacyOverrideScope } from './guards.mjs';
+const flavoredScope = `${escapeSelector(legacyOverrideScope)}(?:\\.dark-mode)?(?: body)? `;
 const channel = '[+-]?(?:\\d*\\.)?\\d+%?';
 const color = `(?:#(?:[\\da-f]{3}|[\\da-f]{4}|[\\da-f]{6}|[\\da-f]{8})|(?:rgb|rgba|hsl|hsla)\\(\\s*${channel}(?:\\s*,\\s*|\\s+)${channel}(?:\\s*,\\s*|\\s+)${channel}(?:\\s*[,/]\\s*${channel})?\\s*\\))`;
 const flavoredOverrideScope = { pattern: flavoredScope };
@@ -123,8 +123,8 @@ export const tokenOverrides = [
   ...['.Page--edit-wiki', '.Page--find-wiki', '.Page--view-wiki', '[class^=Page--wiki]'].flatMap((page) =>
     [['is_not-yet', 'warning'], ['is_done', 'success']].flatMap(([state, scale]) => {
       const card = `${page} .card.-wiki-migration.${state}`;
-      const light = literalScope(`${rootOverrideScope}:not(.dark-mode) `);
-      const dark = literalScope(`${rootOverrideScope}.dark-mode `);
+      const light = literalScope(`${legacyOverrideScope}:not(.dark-mode) `);
+      const dark = literalScope(`${legacyOverrideScope}.dark-mode `);
       const accent = `--${scale}ColorScaleAccent`;
       return [
         override(dark, `${card} a`, 'color', '--backgroundColorSchemeBase'),
@@ -151,7 +151,7 @@ export const scopePattern = (scope) => {
 };
 const overrideAllowlist = [
   ...['.button--primary.is_disabled', '.button--primary[disabled]'].map((selector) => ({
-    selector: new RegExp(`^${escapeSelector(`${darkScope} ${selector}`)}$`),
+    selector: new RegExp(`^${escapeSelector(`${legacyDarkScope} ${selector}`)}$`),
     property: 'background-color',
     value: new RegExp(`^${color}$`, 'i'),
     important: false,
@@ -162,9 +162,9 @@ const overrideAllowlist = [
     value: new RegExp(`^var\\(${token}\\)$`),
     important,
   })),
-  { selector: new RegExp(`^${escapeSelector(`${darkScope} `)}.+$`), property: 'color', value: /^var\(--backgroundColorSchemeBase\)$/ },
-  { selector: new RegExp(`^${escapeSelector(`${darkScope} .pill--square.-subtasking`)}$`), property: 'color', value: /^var\(--textColorWeak\)$/, important: false },
-  { selector: new RegExp(`^${escapeSelector(`${errorPageScope}:not(.dark-mode) body.Page--view-kanban .card`)}$`), property: 'background-color', value: /^var\(--backgroundColorSchemeBase\)$/ },
+  { selector: new RegExp(`^${escapeSelector(`${legacyDarkScope} `)}.+$`), property: 'color', value: /^var\(--backgroundColorSchemeBase\)$/ },
+  { selector: new RegExp(`^${escapeSelector(`${legacyDarkScope} .pill--square.-subtasking`)}$`), property: 'color', value: /^var\(--textColorWeak\)$/, important: false },
+  { selector: new RegExp(`^${escapeSelector(`${legacyScope}:not(.dark-mode) body.Page--view-kanban .card`)}$`), property: 'background-color', value: /^var\(--backgroundColorSchemeBase\)$/ },
   { selector: new RegExp(`^${flavoredScope}${escapeSelector('.upgrade-bar.generic-cta-bar')}$`), property: 'background-image', value: new RegExp(`^linear-gradient\\(45deg, ${color}, ${color}\\)$`, 'i') },
   { selector: new RegExp(`^${flavoredScope}${escapeSelector('.na-choice-box.is_active')}$`), property: 'border-color', value: new RegExp(`^${color}$`, 'i') },
   ...[...sidebarProperties].flatMap(([selector, properties]) => properties.map((property) => ({
@@ -190,10 +190,14 @@ const nodeShape = (node) => [node.type, node.type === 'combinator' ? node.value.
   node.namespace, node.nodes?.map(nodeShape)];
 const guardShape = (guard) => JSON.stringify(nodeShape(selectorParser().astSync(guard, { lossless: false }).first.first));
 
+const tokenSelector = new RegExp(`^${escapeSelector(sharedTokenScope)}(?:\\.dark-mode)?(?: body)?(?: (?:\\[data-tooltip\\]|\\.message-tip|\\.simptip-(?:success|info|danger|error|warning)))?$`);
+const guardShapes = new Map([errorPageGuard, legacyGuard, newDesignGuard].map((guard) => [guard, guardShape(guard)]));
+const keyframesPattern = /^(?:-\w+-)?keyframes$/i;
+
 export function checkErrorPageExclusion(css, addon = false) {
   css.walkRules((rule) => {
     for (let parent = rule.parent; parent; parent = parent.parent) {
-      if (parent.type === 'atrule' && /^(?:-\w+-)?keyframes$/i.test(parent.name)) return;
+      if (parent.type === 'atrule' && keyframesPattern.test(parent.name)) return;
     }
     const ast = selectorParser().astSync(rule.selector);
     for (const selector of ast.nodes) {
@@ -201,11 +205,10 @@ export function checkErrorPageExclusion(css, addon = false) {
       const compound = selector.nodes.slice(0, end < 0 ? undefined : end);
       const anchored = compound.some((node) =>
         (node.type === 'pseudo' && node.value === ':root') || (node.type === 'class' && node.value === 'dark-mode'));
-      const tokenSelector = new RegExp(`^${escapeSelector(rootTokenScope)}(?:\\.dark-mode)?(?: body)?(?: (?:\\[data-tooltip\\]|\\.message-tip|\\.simptip-(?:success|info|danger|error|warning)))?$`);
       const rootTokens = tokenSelector.test(selector.toString().trim()) && rule.nodes.every((node) =>
         node.type === 'comment' || (node.type === 'decl' && node.prop.startsWith('--')));
-      const expected = addon ? nuGuard : rootTokens ? errorPageGuard : legacyGuard;
-      if (!anchored || !compound.some((node) => JSON.stringify(nodeShape(node)) === guardShape(expected))) {
+      const expected = addon ? newDesignGuard : rootTokens ? errorPageGuard : legacyGuard;
+      if (!anchored || !compound.some((node) => JSON.stringify(nodeShape(node)) === guardShapes.get(expected))) {
         throw new Error(`Missing error-page guard or design guard: ${selector}`);
       }
     }
@@ -224,9 +227,9 @@ export function checkDisabledContrast(css, flavor) {
   css.walkRules((rule) => {
     for (const selector of postcss.list.comma(rule.selector)) {
       for (const decl of rule.nodes) {
-        if (decl.prop === '--textColorWeak' && selector === `${rootTokenScope}.dark-mode`) labels.push(decl.value);
+        if (decl.prop === '--textColorWeak' && selector === `${sharedTokenScope}.dark-mode`) labels.push(decl.value);
         for (const state of ['.is_disabled', '[disabled]']) {
-          if (decl.prop === 'background-color' && selector === `${darkScope} .button--primary${state}`) {
+          if (decl.prop === 'background-color' && selector === `${legacyDarkScope} .button--primary${state}`) {
             backgrounds.set(state, decl.value);
           }
         }
@@ -246,6 +249,34 @@ export function contrastRatio(a, b) {
   const left = luminance(parseColor(a, 'foreground'));
   const right = luminance(parseColor(b, 'background'));
   return (Math.max(left, right) + 0.05) / (Math.min(left, right) + 0.05);
+}
+
+export const tooltipVariants = ['success', 'info', 'danger', 'error', 'warning'];
+export function checkTooltipContrast(css, flavor, reportException = console.log) {
+  const checked = new Set();
+  let minimum = Infinity;
+  const exceptions = new Set();
+  css.walkRules((rule) => {
+    const values = new Map(rule.nodes.filter((node) => node.type === 'decl').map((decl) => [decl.prop, decl.value]));
+    for (const selector of postcss.list.comma(rule.selector)) {
+      const mode = selector.includes('.dark-mode') ? '.dark-mode' : '';
+      const root = `${sharedTokenScope}${mode}`;
+      const variant = tooltipVariants.find((name) => selector === `${root} .simptip-${name}`);
+      if (selector !== root && !variant) continue;
+      const foreground = values.get('--tooltip-text-color');
+      const background = values.get('--tooltip-base-color');
+      const ratio = contrastRatio(foreground, background);
+      const floor = flavor === 'latte' && variant === 'success' ? 2.5 : 3;
+      if (ratio < floor) throw new Error(`${flavor} tooltip ${variant || 'default'} contrast: ${ratio.toFixed(3)}:1 < ${floor}:1`);
+      if (ratio < 3) exceptions.add(`${flavor} contrast exception: tooltip ${variant}: ${foreground} / ${background}: ${ratio.toFixed(3)}:1 >= 2.5:1`);
+      if (values.get('--tooltipBaseColor') !== background) throw new Error('Tooltip background aliases must agree');
+      checked.add(`${mode}/${variant || 'default'}`);
+      minimum = Math.min(minimum, ratio);
+    }
+  });
+  if (checked.size !== 2 * (tooltipVariants.length + 1)) throw new Error('Missing default or variant tooltip contrast pairs');
+  for (const message of exceptions) reportException(message);
+  return `${flavor} tooltip contrast: PASS (${checked.size} pairs; minimum ${minimum.toFixed(3)}:1; ${exceptions.size} Latte solid exceptions)`;
 }
 
 export const markerNames = ['pink', 'bordeaux', 'red', 'beige', 'orange', 'yellow', 'lime', 'green', 'cyan', 'blue', 'purple', 'magenta', 'grey'];
@@ -274,7 +305,11 @@ export function nuContrastPairs() {
   return pairs;
 }
 
+const allNuContrastPairs = nuContrastPairs();
+const accentNuContrastPairs = allNuContrastPairs.filter(([foreground]) => foreground.endsWith('-on-primary'));
+
 export function checkNuTokenTypes(css, discovered) {
+  if (![...discovered.names, ...discovered.composites].some((name) => name.startsWith('--nuui-'))) throw new Error('No --nuui-* tokens discovered for type parity');
   const images = new Set(discovered.images);
   const colors = new Set(discovered.names.filter((name) => !discovered.composites.includes(name)));
   let checked = 0;
@@ -286,6 +321,7 @@ export function checkNuTokenTypes(css, discovered) {
     if (!image && !(alias && colors.has(alias))) parseColor(decl.value, decl.prop);
     checked++;
   });
+  if (!checked) throw new Error('No --nuui-* assignments checked for type parity');
   return `New design image/color type parity: PASS (${[...images].filter((name) => name.startsWith('--nuui-')).length} discovered image tokens; ${checked} assignments)`;
 }
 
@@ -313,14 +349,20 @@ export function nuContrastFloor(flavor, foreground, background) {
     /^bg-(?:primary|danger|warning|success|info)-(?:default|hover|active)$/.test(background) ? 2.5 : 3;
 }
 
-export function checkNuStyle(css, flavor, reportException = console.log) {
-  checkErrorPageExclusion(css, true);
+export const nuDistinctSurfaces = [
+  ...['bg-canvas-backdrop', 'bg-canvas-default', 'bg-default', 'bg-floating', 'bg-subtle', 'bg-row-header', 'bg-ghost-active'].map((surface) => ['bg-ghost-hover', surface]),
+  ...['bg-floating', 'bg-subtle'].map((surface) => ['bg-disabled', surface]),
+];
+
+export function checkNuStyle(css, flavor, reportException = console.log, accentOnly = false) {
+  if (!accentOnly) checkErrorPageExclusion(css, true);
   let rules = 0;
   let minimum = Infinity;
   const exceptions = new Set();
   css.walkRules((rule) => {
-    const component = Object.entries(nuComponentTokens).find(([selector]) => rule.selector === `${nuTokenScope} ${selector}`)?.[1];
+    const component = Object.entries(nuComponentTokens).find(([selector]) => rule.selector === `${newDesignTokenScope} ${selector}`)?.[1];
     if (component) {
+      if (accentOnly) return;
       if (rule.nodes.length !== Object.keys(component).length || rule.nodes.some((decl) => decl.type !== 'decl' || decl.important || decl.value !== `var(${component[decl.prop]})`)) throw new Error(`Unexpected add-on component: ${rule.selector}`);
       return;
     }
@@ -328,20 +370,25 @@ export function checkNuStyle(css, flavor, reportException = console.log) {
       if (!decl.prop.startsWith('--nuui-')) throw new Error(`Unexpected add-on declaration: ${decl.prop}`);
       return [decl.prop.slice(7), decl.value];
     }));
-    for (const [foreground, background] of nuContrastPairs()) {
+    for (const [foreground, background] of accentOnly ? accentNuContrastPairs : allNuContrastPairs) {
       const ratio = contrastRatio(values.get(foreground), values.get(background));
       minimum = Math.min(minimum, ratio);
       const floor = nuContrastFloor(flavor, foreground, background);
       if (ratio < floor) throw new Error(`${flavor} new design contrast: ${foreground} / ${background}: ${ratio.toFixed(2)}:1 < ${floor}:1`);
       if (ratio < 3) exceptions.add(`${flavor.includes('/') ? flavor : `${flavor}/mauve`} contrast exception: ${foreground} / ${background}: ${ratio.toFixed(3)}:1 >= 2.5:1`);
     }
+    if (accentOnly) { rules++; return; }
     const order = ['bg-canvas-backdrop', 'bg-canvas-default', 'bg-default', 'bg-floating'];
     for (let index = 1; index < order.length; index++) {
       const before = luminance(parseColor(values.get(order[index - 1]), order[index - 1]));
       const after = luminance(parseColor(values.get(order[index]), order[index]));
       if (before > after) throw new Error(`${flavor} new design neutral order: ${order[index - 1]} / ${order[index]}`);
     }
-    if (values.get('bg-ghost-hover') === values.get('bg-ghost-active')) throw new Error('New design hover/active surfaces must differ');
+    for (const [left, right] of nuDistinctSurfaces) {
+      const a = parseColor(values.get(left), left);
+      const b = parseColor(values.get(right), right);
+      if (a.every((channel, index) => channel === b[index])) throw new Error(`New design surfaces must differ: ${left} / ${right}`);
+    }
     rules++;
   });
   if (rules !== 4) throw new Error(`Expected four add-on root/body rules, got ${rules}`);
@@ -353,7 +400,6 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   try {
     const source = await readFile(new URL('../catppuccin.user.less', import.meta.url), 'utf8');
     const library = await download(libraryURL);
-    const discovered = inspectCSS((await loadStylesheets()).map(({ css }) => css).join('\n'));
     const addon = await readFile(new URL('../catppuccin-nu.user.less', import.meta.url), 'utf8');
     for (const flavor of ['latte', 'frappe', 'macchiato', 'mocha']) {
       const result = await compile(flavor, source, library);
@@ -367,6 +413,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       const ordering = checkNeutralOrder(css, flavor);
       checkOverrides(css);
       checkErrorPageExclusion(css);
+      console.log(checkTooltipContrast(css, flavor));
       const contrast = checkDisabledContrast(css, flavor);
       if (contrast) console.log(contrast);
       console.log(`${flavor}: PASS (${count} custom-property assignments)`);
@@ -374,28 +421,21 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     }
     for (const flavor of ['latte', 'frappe', 'macchiato', 'mocha']) {
       const css = postcss.parse((await compile(flavor, addon, library)).css);
-      console.log(checkNuTokenTypes(css, discovered));
       console.log(checkNuStyle(css, flavor));
       console.log(`${flavor} add-on: PASS`);
     }
     const accents = ['rosewater', 'flamingo', 'pink', 'mauve', 'red', 'maroon', 'peach', 'yellow', 'green', 'teal', 'blue', 'sapphire', 'sky', 'lavender', 'subtext0'];
     for (const flavor of ['latte', 'frappe', 'macchiato', 'mocha']) {
-      for (const accent of accents.filter((accent) => accent !== 'mauve')) {
+      await Promise.all(accents.filter((accent) => accent !== 'mauve').map(async (accent) => {
         const addonCSS = postcss.parse((await compile(flavor, addon, library, flavor, accent)).css);
-        checkNuTokenTypes(addonCSS, discovered);
-        checkNuStyle(addonCSS, `${flavor}/${accent}`);
-        const mainCSS = postcss.parse((await compile(flavor, source, library, flavor, accent)).css);
-        checkNeutralOrder(mainCSS, flavor);
-        checkOverrides(mainCSS);
-        checkErrorPageExclusion(mainCSS);
-        checkDisabledContrast(mainCSS, flavor);
-      }
+        checkNuStyle(addonCSS, `${flavor}/${accent}`, console.log, true);
+      }));
     }
     console.log('Both files compile; add-on contrast across all 15 accent choices and four flavors: PASS');
     const mixedNu = postcss.parse((await compile('latte', addon, library, 'mocha', 'green')).css);
     const nuValues = new Map();
     mixedNu.walkRules((rule) => nuValues.set(rule.selector, rule.nodes.filter((decl) => decl.prop === '--nuui-bg-default').at(-1)?.value));
-    if (nuValues.get(nuTokenScope) === nuValues.get(`${nuTokenScope}.dark-mode`)) throw new Error('Add-on flavor switching failed');
+    if (nuValues.get(newDesignTokenScope) === nuValues.get(`${newDesignTokenScope}.dark-mode`)) throw new Error('Add-on flavor switching failed');
     const mixed = postcss.parse((await compile('latte', source, library, 'mocha', 'green')).css, { from: undefined, map: false });
     const palettes = {};
     mixed.walkDecls('--backgroundColorBase', (decl) => {

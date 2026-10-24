@@ -7,7 +7,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { promisify } from 'node:util';
 import { execFile } from 'node:child_process';
 import postcss from 'postcss';
-import { compile, checkDisabledContrast, darkScope, rootTokenScope, rootOverrideScope, nuContrastPairs, checkErrorPageExclusion, errorPageScope, checkOverrides, checkNeutralOrder, parseColor, checkRGBCounterpart } from '../scripts/compile.mjs';
+import { compile, checkDisabledContrast, legacyDarkScope, sharedTokenScope, legacyOverrideScope, nuContrastPairs, checkErrorPageExclusion, legacyScope, checkOverrides, checkNeutralOrder, parseColor, checkRGBCounterpart } from '../scripts/compile.mjs';
 import expectedOrder from './fixtures/neutral-order.json' with { type: 'json' };
 import { blockStart, blockEnd } from '../scripts/dark-text.mjs';
 
@@ -36,33 +36,39 @@ test('CLI checks execute from a path containing spaces and URL-encoded character
     .fixture() when (@flavor = latte) { ${assignments('latte')} }
     .fixture() when not (@flavor = latte) { ${assignments('mocha')} }
     .theme(@flavor) { .fixture(); }
-    ${rootTokenScope} { .theme(@lightFlavor); }
-    ${rootTokenScope}.dark-mode { .theme(@darkFlavor); }
-    ${darkScope} .button--primary.is_disabled, ${darkScope} .button--primary[disabled] { background-color: #333; }`);
+    .tooltips() { each(success info danger error warning, { .simptip-@{value} { --tooltip-base-color:#fff; --tooltipBaseColor:#fff; --tooltip-text-color:#111; } }); }
+    ${sharedTokenScope} { .tooltips(); .theme(@lightFlavor); }
+    ${sharedTokenScope}.dark-mode { .tooltips(); .theme(@darkFlavor); }
+    ${legacyDarkScope} .button--primary.is_disabled, ${legacyDarkScope} .button--primary[disabled] { background-color: #333; }`);
   const nuAssignments = [...new Set(nuContrastPairs().flat())].map((name) =>
     `--nuui-${name}: ${name.startsWith('bg-') ? '#ffffff' : '#000000'};`).join(' ');
-  const { nuTokenScope } = await import('../scripts/guards.mjs');
+  const { newDesignTokenScope } = await import('../scripts/guards.mjs');
   await writeFile(join(directory, 'catppuccin-nu.user.less'), `${importLine}
     .nu(@flavor) { ${nuAssignments}
       --nuui-bg-default: if((@flavor = latte), #fff, #eee);
       --nuui-bg-canvas-backdrop: #000;
       --nuui-bg-canvas-default: #ddd;
       --nuui-bg-floating: #fff;
-      --nuui-bg-ghost-active: #eee;
+      --nuui-bg-ghost-hover: #ccc;
+      --nuui-bg-ghost-active: #aaa;
+      --nuui-bg-subtle: #fff;
+      --nuui-bg-row-header: #fff;
+      --nuui-bg-disabled: #ddd;
     }
-    ${nuTokenScope} { .nu(@lightFlavor); body { .nu(@lightFlavor); } }
-    ${nuTokenScope}.dark-mode { .nu(@darkFlavor); body { .nu(@darkFlavor); } }`);
+    ${newDesignTokenScope} { .nu(@lightFlavor); body { .nu(@lightFlavor); } }
+    ${newDesignTokenScope}.dark-mode { .nu(@darkFlavor); body { .nu(@darkFlavor); } }`);
   await writeFile(join(directory, 'mock-fetch.mjs'), `globalThis.fetch = async (url) => new Response(
     String(url).endsWith('.less') ? '/* fixture library */' :
-    String(url).endsWith('.css') ? ':root { --backgroundColorBase: red; }' :
-    String(url) === process.env.BACKLOG_PAGE_URL ? '<link rel="stylesheet" href="https://assets.backlog.com/fixture.css">' :
+    String(url).endsWith('.css') ? ':root { --backgroundColorBase: red; --nuui-bg-default: white; }' :
+    String(url) === process.env.BACKLOG_PAGE_URL ? '<link rel="stylesheet" href="https://assets.backlog.com/styles_nu-ui/fixture.css">' :
     (() => { throw new Error('Unexpected discovery page'); })());`);
+  await writeFile(join(directory, 'offline-fetch.mjs'), `globalThis.fetch = async (url) => { if (String(url) !== 'https://userstyles.catppuccin.com/lib/std/v1.less') throw new Error('Backlog request forbidden: ' + url); return new Response('/* fixture library */'); };`);
   for (const [script, expected] of [
     ['compile', /mocha: PASS[\s\S]*Independent light\/dark switching.*PASS/],
     ['coverage', /1 assignable; 0 unassigned/],
     ['literals', /Summary: 0 stylesheets; 0 selector groups; 0 property\/kind entries/],
   ]) {
-    const { stdout } = await promisify(execFile)(process.execPath, ['--import', pathToFileURL(join(directory, 'mock-fetch.mjs')).href, join(directory, 'scripts', `${script}.mjs`)], { env: { ...process.env, BACKLOG_PAGE_URL: 'https://simochee.backlog.com/fixture-page' } });
+    const { stdout } = await promisify(execFile)(process.execPath, ['--import', pathToFileURL(join(directory, script === 'compile' ? 'offline-fetch.mjs' : 'mock-fetch.mjs')).href, join(directory, 'scripts', `${script}.mjs`)], { env: { ...process.env, BACKLOG_PAGE_URL: 'https://simochee.backlog.com/fixture-page' } });
     assert.match(stdout, expected);
     if (script === 'compile') {
       for (const flavor of ['latte', 'frappe', 'macchiato', 'mocha']) {
@@ -99,6 +105,7 @@ function surfaceValues(flavor = 'latte') {
     ['--borderColorDefault', '#bbbbbb'],
     ['--iconColorWeak', '#777777'],
     ['--textColorWeak', '#aaaaaa'],
+    ['--tooltip-base-color', '#fff'], ['--tooltipBaseColor', '#fff'], ['--tooltip-text-color', '#111'],
   ]);
 }
 
@@ -145,7 +152,7 @@ test('latte rejects completely flat neutral surfaces', () => {
 });
 
 test('neutral ordering names missing properties', () => {
-  for (const name of Object.keys(surfaceValues()).filter((name) => !['--iconColorWeak', '--textColorWeak'].includes(name))) {
+  for (const name of Object.keys(surfaceValues()).filter((name) => !['--iconColorWeak', '--textColorWeak'].includes(name) && !name.startsWith('--tooltip'))) {
     const values = surfaceValues();
     delete values[name];
     assert.throws(() => checkNeutralOrder(surfaces(values), 'latte'), (error) => error.message.includes(name));
@@ -176,7 +183,7 @@ test('RGB checks name mismatched and missing counterparts', () => {
   }
 });
 
-const scope = rootOverrideScope;
+const scope = legacyOverrideScope;
 for (const color of ['#abc', '#aabbcc', 'rgb(10, 20, 30)', 'rgba(10, 20, 30, 0.5)', 'hsl(120, 50%, 50%)', 'rgb(10 20 30 / 50%)', 'hsl(120 50% 50%)']) {
   test(`override allowlist accepts themed colors in ${color}`, () => {
     for (const prefix of [scope, `${scope}.dark-mode`, `${scope} body`]) {
@@ -203,24 +210,24 @@ test('override allowlist rejects mismatched selectors, values and unlisted prope
 test('override allowlist preserves token overrides and custom assignments', () => {
   assert.doesNotThrow(() => checkOverrides(postcss.parse(`
     :root { --example: #abc; }
-    ${darkScope} .example { color: var(--backgroundColorSchemeBase); }
-    ${darkScope} .pill--square.-subtasking { color: var(--textColorWeak); }
-    ${errorPageScope}:not(.dark-mode) body.Page--view-kanban .card { background-color: var(--backgroundColorSchemeBase); }
+    ${legacyDarkScope} .example { color: var(--backgroundColorSchemeBase); }
+    ${legacyDarkScope} .pill--square.-subtasking { color: var(--textColorWeak); }
+    ${legacyScope}:not(.dark-mode) body.Page--view-kanban .card { background-color: var(--backgroundColorSchemeBase); }
   `)));
 });
 
 test('error-page exclusion rejects any unguarded selector, including mixed lists and nested contexts', () => {
-  for (const selector of [':root', 'body:not(.Page--error)', '.dark-mode .pill', `${errorPageScope}, .pill`, `[title='${errorPageScope}']`]) {
+  for (const selector of [':root', 'body:not(.Page--error)', '.dark-mode .pill', `${legacyScope}, .pill`, `[title='${legacyScope}']`]) {
     assert.throws(() => checkErrorPageExclusion(postcss.parse(`@media screen {${selector} {--example:red}}`)), /Missing error-page guard/);
   }
-  assert.doesNotThrow(() => checkErrorPageExclusion(postcss.parse(`${rootTokenScope}, ${rootTokenScope}.dark-mode body {--example:red}`)));
+  assert.doesNotThrow(() => checkErrorPageExclusion(postcss.parse(`${sharedTokenScope}, ${sharedTokenScope}.dark-mode body {--example:red}`)));
 });
 
 test('disabled contrast checks both states and reports flavor and measured ratio', () => {
   const fixture = (label = '#aaa', background = '#333') => postcss.parse(`
-    ${rootTokenScope}.dark-mode { --textColorWeak: ${label}; }
-    ${darkScope} .button--primary.is_disabled { background-color: ${background}; }
-    ${darkScope} .button--primary[disabled] { background-color: ${background}; }
+    ${sharedTokenScope}.dark-mode { --textColorWeak: ${label}; }
+    ${legacyDarkScope} .button--primary.is_disabled { background-color: ${background}; }
+    ${legacyDarkScope} .button--primary[disabled] { background-color: ${background}; }
   `);
   for (const flavor of ['frappe', 'macchiato', 'mocha']) {
     assert.match(checkDisabledContrast(fixture(), flavor), /PASS.*:1 >= 3:1/);
@@ -247,7 +254,7 @@ test('error-page guard must be complete and belong to the leading root or dark c
     '.other:where(:not(:has(> body.Page--error)))',
   ]) assert.throws(() => checkErrorPageExclusion(postcss.parse(`${selector} {color:red}`)), /Missing error-page guard/);
   assert.doesNotThrow(() => checkErrorPageExclusion(postcss.parse(`
-    ${darkScope} .item:is(.a, .b), ${rootOverrideScope} body {color:red}
+    ${legacyDarkScope} .item:is(.a, .b), ${legacyOverrideScope} body {color:red}
     @keyframes pulse {from {opacity:0} to {opacity:1}}
     @-webkit-keyframes pulse {50% {opacity:0}}
   `)));
