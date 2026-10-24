@@ -101,7 +101,8 @@ export function checkNeutralOrder(css, flavor) {
   return `${flavor} neutral ordering: PASS (${spec.direction}, ${checked} rules)`;
 }
 
-const flavoredScope = ':root(?::root){4}(?:\\.dark-mode)?(?: body)? ';
+export const errorPageScope = ':root:not(:has(> body.Page--error))';
+const flavoredScope = ':root:not\\(:has\\(> body\\.Page--error\\)\\)(?::root){4}(?:\\.dark-mode)?(?: body:not\\(\\.Page--error\\))? ';
 const channel = '[+-]?(?:\\d*\\.)?\\d+%?';
 const color = `(?:#(?:[\\da-f]{3}|[\\da-f]{4}|[\\da-f]{6}|[\\da-f]{8})|(?:rgb|rgba|hsl|hsla)\\(\\s*${channel}(?:\\s*,\\s*|\\s+)${channel}(?:\\s*,\\s*|\\s+)${channel}(?:\\s*[,/]\\s*${channel})?\\s*\\))`;
 const escapeSelector = (selector) => selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -121,8 +122,8 @@ export const tokenOverrides = [
   ...['.Page--edit-wiki', '.Page--find-wiki', '.Page--view-wiki', '[class^=Page--wiki]'].flatMap((page) =>
     [['is_not-yet', 'warning'], ['is_done', 'success']].flatMap(([state, scale]) => {
       const card = `${page} .card.-wiki-migration.${state}`;
-      const light = literalScope(':root:root:root:root:root:not(.dark-mode) ');
-      const dark = literalScope(':root:root:root:root:root.dark-mode ');
+      const light = literalScope(`${errorPageScope}:root:root:root:root:not(.dark-mode) `);
+      const dark = literalScope(`${errorPageScope}:root:root:root:root.dark-mode `);
       const accent = `--${scale}ColorScaleAccent`;
       return [
         override(dark, `${card} a`, 'color', '--backgroundColorSchemeBase'),
@@ -148,15 +149,21 @@ export const scopePattern = (scope) => {
   throw new Error('Scope must be a pattern or literal');
 };
 const overrideAllowlist = [
+  ...['.button--primary.is_disabled', '.button--primary[disabled]'].map((selector) => ({
+    selector: new RegExp(`^${escapeSelector(`${errorPageScope}.dark-mode ${selector}`)}$`),
+    property: 'background-color',
+    value: new RegExp(`^${color}$`, 'i'),
+    important: false,
+  })),
   ...tokenOverrides.map(({ scope, selector, property, token, important }) => ({
     selector: new RegExp(`^${scopePattern(scope)}${escapeSelector(selector)}$`),
     property,
     value: new RegExp(`^var\\(${token}\\)$`),
     important,
   })),
-  { selector: new RegExp(`^${escapeSelector('.dark-mode ')}.+$`), property: 'color', value: /^var\(--backgroundColorSchemeBase\)$/ },
-  { selector: new RegExp(`^${escapeSelector('.dark-mode .pill--square.-subtasking')}$`), property: 'color', value: /^var\(--textColorWeak\)$/, important: false },
-  { selector: new RegExp(`^${escapeSelector(':root:not(.dark-mode) body.Page--view-kanban .card')}$`), property: 'background-color', value: /^var\(--backgroundColorSchemeBase\)$/ },
+  { selector: new RegExp(`^${escapeSelector(`${errorPageScope}.dark-mode `)}.+$`), property: 'color', value: /^var\(--backgroundColorSchemeBase\)$/ },
+  { selector: new RegExp(`^${escapeSelector(`${errorPageScope}.dark-mode .pill--square.-subtasking`)}$`), property: 'color', value: /^var\(--textColorWeak\)$/, important: false },
+  { selector: new RegExp(`^${escapeSelector(`${errorPageScope}:not(.dark-mode) body.Page--view-kanban .card`)}$`), property: 'background-color', value: /^var\(--backgroundColorSchemeBase\)$/ },
   { selector: new RegExp(`^${flavoredScope}${escapeSelector('.upgrade-bar.generic-cta-bar')}$`), property: 'background-image', value: new RegExp(`^linear-gradient\\(45deg, ${color}, ${color}\\)$`, 'i') },
   { selector: new RegExp(`^${flavoredScope}${escapeSelector('.na-choice-box.is_active')}$`), property: 'border-color', value: new RegExp(`^${color}$`, 'i') },
   ...[...sidebarProperties].flatMap(([selector, properties]) => properties.map((property) => ({
@@ -181,13 +188,15 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       if (!count) throw new Error('Compiled output has no assignments');
       const ordering = checkNeutralOrder(css, flavor);
       checkOverrides(css);
+      checkErrorPageExclusion(css);
+      checkWeakTokens(css);
       console.log(`${flavor}: PASS (${count} custom-property assignments)`);
       console.log(ordering);
     }
     const mixed = postcss.parse((await compile('latte', source, library, 'mocha', 'green')).css, { from: undefined, map: false });
     const palettes = {};
     mixed.walkDecls('--backgroundColorBase', (decl) => {
-      if (decl.parent.selector.includes('body')) return;
+      if (decl.parent.selector.includes(' body:not(')) return;
       palettes[decl.parent.selector.includes('.dark-mode') ? 'dark' : 'light'] = decl.value;
     });
     if (!palettes.light || !palettes.dark || palettes.light === palettes.dark) throw new Error('Flavor switching failed');
@@ -208,4 +217,29 @@ export function checkOverrides(css) {
       throw new Error(`Unexpected color override: ${decl.parent.selector} / ${decl.prop}`);
     }
   });
+}
+
+export function checkErrorPageExclusion(css) {
+  css.walkRules((rule) => {
+    for (const selector of postcss.list.comma(rule.selector)) {
+      if (!selector.startsWith(errorPageScope)) {
+        throw new Error(`Missing error-page guard: ${selector}`);
+      }
+    }
+  });
+}
+
+export function checkWeakTokens(css) {
+  let checked = 0;
+  css.walkRules((rule) => {
+    const values = new Map(rule.nodes.filter((node) => node.type === 'decl').map((decl) => [decl.prop, decl.value]));
+    if (!values.has('--backgroundColorSchemeBase')) return;
+    const icon = parseColor(values.get('--iconColorWeak'), '--iconColorWeak');
+    const text = parseColor(values.get('--textColorWeak'), '--textColorWeak');
+    if (icon.every((channel, index) => channel === text[index])) {
+      throw new Error(`Weak tokens must differ: --iconColorWeak / --textColorWeak (${rule.selector})`);
+    }
+    checked++;
+  });
+  if (!checked) throw new Error('Missing weak token assignments');
 }

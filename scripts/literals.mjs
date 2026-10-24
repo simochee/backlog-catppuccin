@@ -44,7 +44,9 @@ function overrideIndex(css) {
     const conditions = context(rule);
     if (!conditions) return;
     for (let selector of postcss.list.comma(rule.selector)) {
+      selector = selector.replace(/^:root:not\(:has\(> body\.Page--error\)\)/, ':root');
       selector = selector.replace(/^:root(?::root){4}(\.dark-mode)?\s+/, (_, dark) => dark ? '.dark-mode ' : '');
+      selector = selector.replace(/^:root(\.dark-mode)\s+/, '$1 ');
       const key = normalize(selector);
       for (const decl of rule.nodes) {
         if (decl.type !== 'decl' || !properties.test(decl.prop)) continue;

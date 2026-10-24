@@ -18,415 +18,427 @@
 @import "https://userstyles.catppuccin.com/lib/std/v1.less";
 
 @-moz-document regexp("https?://([a-zA-Z0-9-]+\\.)+backlog\\.(com|jp)(:[0-9]+)?/.*"), regexp("https?://([a-zA-Z0-9-]+\\.)+backlogtool\\.com(:[0-9]+)?/.*") {
-  // Repeated :root raises specificity above site dark/project-theme rules.
-  :root:root:root:root:root {
-    #catppuccin(@lightFlavor);
-    body { #catppuccin(@lightFlavor); }
-    #tooltips(@lightFlavor);
-  }
-  :root:root:root:root:root.dark-mode {
-    #catppuccin(@darkFlavor);
-    body { #catppuccin(@darkFlavor); }
-    #tooltips(@darkFlavor);
-  }
+  :root:not(:has(> body.Page--error)) {
+    // Repeated :root raises specificity above site dark/project-theme rules.
+    &:root:root:root:root {
+      #catppuccin(@lightFlavor);
+      body:not(.Page--error) { #catppuccin(@lightFlavor); }
+      #tooltips(@lightFlavor);
+    }
+    &:root:root:root:root.dark-mode {
+      #catppuccin(@darkFlavor);
+      body:not(.Page--error) { #catppuccin(@darkFlavor); }
+      #tooltips(@darkFlavor);
+    }
     // BEGIN GENERATED DARK TEXT (npm run generate:dark-text)
-    .dark-mode .Page--credit-card .credit-card-form-table .card-ok,
-    .dark-mode .Page--edit-wiki .card.-wiki-migration.is_done,
-    .dark-mode .Page--edit-wiki .card.-wiki-migration.is_done .title,
-    .dark-mode .Page--edit-wiki .card.-wiki-migration.is_not-yet,
-    .dark-mode .Page--edit-wiki .card.-wiki-migration.is_not-yet .title,
-    .dark-mode .Page--find-wiki .card.-wiki-migration.is_done,
-    .dark-mode .Page--find-wiki .card.-wiki-migration.is_done .title,
-    .dark-mode .Page--find-wiki .card.-wiki-migration.is_not-yet,
-    .dark-mode .Page--find-wiki .card.-wiki-migration.is_not-yet .title,
-    .dark-mode .Page--integrations-setting .chatwork-help,
-    .dark-mode .Page--profile-list .member-list__launch-menu-item,
-    .dark-mode .Page--profile-list .member-list__launch-menu-item:hover,
-    .dark-mode .Page--view-wiki .card.-wiki-migration.is_done,
-    .dark-mode .Page--view-wiki .card.-wiki-migration.is_done .title,
-    .dark-mode .Page--view-wiki .card.-wiki-migration.is_not-yet,
-    .dark-mode .Page--view-wiki .card.-wiki-migration.is_not-yet .title,
-    .dark-mode .badge--default,
-    .dark-mode .button--primary,
-    .dark-mode .button-group__link.is_active,
-    .dark-mode .calendar__title,
-    .dark-mode .dashboard-announce-list__category,
-    .dark-mode .dropdown-box__header-nav-label,
-    .dark-mode .dropdown-box__header-nav-link,
-    .dark-mode .dropdown-box__title,
-    .dark-mode .dropdown-box__toggle-button,
-    .dark-mode .dropdown-box__toggle-button:not(.is_active):focus,
-    .dark-mode .dropdown-box__toggle-button:not(.is_active):hover,
-    .dark-mode .filter-nav.-wiki-tag .filter-nav__link.is_active,
-    .dark-mode .filter-nav.-wiki-tag .filter-nav__link.is_active .filter-nav__num,
-    .dark-mode .filter-nav.-wiki-tag .filter-nav__link:focus,
-    .dark-mode .filter-nav.-wiki-tag .filter-nav__link:focus .filter-nav__num,
-    .dark-mode .filter-nav.-wiki-tag .filter-nav__link:hover,
-    .dark-mode .filter-nav.-wiki-tag .filter-nav__link:hover .filter-nav__num,
-    .dark-mode .filter-nav__link.is_active,
-    .dark-mode .filter-nav__link.is_active .filter-nav__num,
-    .dark-mode .filter-nav__link:focus,
-    .dark-mode .filter-nav__link:focus .filter-nav__num,
-    .dark-mode .filter-nav__link:hover,
-    .dark-mode .filter-nav__link:hover .filter-nav__num,
-    .dark-mode .icon-button--ai.is_active ._assistive-text,
-    .dark-mode .icon-button--ai.is_active svg.icon,
-    .dark-mode .icon-button--ai:active ._assistive-text,
-    .dark-mode .icon-button--ai:focus-visible ._assistive-text,
-    .dark-mode .icon-button--ai:focus-visible svg.icon,
-    .dark-mode .icon-button--ai:hover ._assistive-text,
-    .dark-mode .icon-button--ai:hover svg.icon,
-    .dark-mode .icon-button--default.is_active .iconic-text,
-    .dark-mode .icon-button--default:focus-visible .iconic-text,
-    .dark-mode .icon-button--default:hover .iconic-text,
-    .dark-mode .icon-button--default[aria-expanded=true]:not(.-disabled-active) .iconic-text,
-    .dark-mode .icon-button.-with-text.is_active ._assistive-text,
-    .dark-mode .icon-button.-with-text:focus-visible ._assistive-text,
-    .dark-mode .icon-button.-with-text:hover ._assistive-text,
-    .dark-mode .icon-button.-with-text[aria-expanded=true]:not(.-disabled-active) ._assistive-text,
-    .dark-mode .input-checkbox.-inverse+label,
-    .dark-mode .issue-csv-import-dialog .confirmation-dialog .confirmation-dialog-title,
-    .dark-mode .message--error,
-    .dark-mode .message--integration:not(.-for-normal-users) .button:hover,
-    .dark-mode .message--success,
-    .dark-mode .message--warning,
-    .dark-mode .modal__title,
-    .dark-mode .pager__link.is_current,
-    .dark-mode .pager__link:focus,
-    .dark-mode .pager__link:hover,
-    .dark-mode .pill,
-    .dark-mode .project-list .project-launch-menu__link,
-    .dark-mode .project-list__item:focus-within .project-launch-menu__text,
-    .dark-mode .project-list__item:focus-within .project-list__key,
-    .dark-mode .project-list__item:focus-within .project-list__name,
-    .dark-mode .project-list__item:hover .project-launch-menu__text,
-    .dark-mode .project-list__item:hover .project-list__key,
-    .dark-mode .project-list__item:hover .project-list__name,
-    .dark-mode .slide-in__title,
-    .dark-mode .status,
-    .dark-mode .status-label,
-    .dark-mode .stream-update span.Action,
-    .dark-mode .view-issue-file-upload__tooltip,
-    .dark-mode [class^=Page--wiki] .card.-wiki-migration.is_done,
-    .dark-mode [class^=Page--wiki] .card.-wiki-migration.is_done .title,
-    .dark-mode [class^=Page--wiki] .card.-wiki-migration.is_not-yet,
-    .dark-mode [class^=Page--wiki] .card.-wiki-migration.is_not-yet .title {
+    &.dark-mode .Page--credit-card .credit-card-form-table .card-ok,
+    &.dark-mode .Page--edit-wiki .card.-wiki-migration.is_done,
+    &.dark-mode .Page--edit-wiki .card.-wiki-migration.is_done .title,
+    &.dark-mode .Page--edit-wiki .card.-wiki-migration.is_not-yet,
+    &.dark-mode .Page--edit-wiki .card.-wiki-migration.is_not-yet .title,
+    &.dark-mode .Page--find-wiki .card.-wiki-migration.is_done,
+    &.dark-mode .Page--find-wiki .card.-wiki-migration.is_done .title,
+    &.dark-mode .Page--find-wiki .card.-wiki-migration.is_not-yet,
+    &.dark-mode .Page--find-wiki .card.-wiki-migration.is_not-yet .title,
+    &.dark-mode .Page--integrations-setting .chatwork-help,
+    &.dark-mode .Page--profile-list .member-list__launch-menu-item,
+    &.dark-mode .Page--profile-list .member-list__launch-menu-item:hover,
+    &.dark-mode .Page--view-wiki .card.-wiki-migration.is_done,
+    &.dark-mode .Page--view-wiki .card.-wiki-migration.is_done .title,
+    &.dark-mode .Page--view-wiki .card.-wiki-migration.is_not-yet,
+    &.dark-mode .Page--view-wiki .card.-wiki-migration.is_not-yet .title,
+    &.dark-mode .badge--default,
+    &.dark-mode .button--primary,
+    &.dark-mode .button-group__link.is_active,
+    &.dark-mode .calendar__title,
+    &.dark-mode .dashboard-announce-list__category,
+    &.dark-mode .dropdown-box__header-nav-label,
+    &.dark-mode .dropdown-box__header-nav-link,
+    &.dark-mode .dropdown-box__title,
+    &.dark-mode .dropdown-box__toggle-button,
+    &.dark-mode .dropdown-box__toggle-button:not(.is_active):focus,
+    &.dark-mode .dropdown-box__toggle-button:not(.is_active):hover,
+    &.dark-mode .filter-nav.-wiki-tag .filter-nav__link.is_active,
+    &.dark-mode .filter-nav.-wiki-tag .filter-nav__link.is_active .filter-nav__num,
+    &.dark-mode .filter-nav.-wiki-tag .filter-nav__link:focus,
+    &.dark-mode .filter-nav.-wiki-tag .filter-nav__link:focus .filter-nav__num,
+    &.dark-mode .filter-nav.-wiki-tag .filter-nav__link:hover,
+    &.dark-mode .filter-nav.-wiki-tag .filter-nav__link:hover .filter-nav__num,
+    &.dark-mode .filter-nav__link.is_active,
+    &.dark-mode .filter-nav__link.is_active .filter-nav__num,
+    &.dark-mode .filter-nav__link:focus,
+    &.dark-mode .filter-nav__link:focus .filter-nav__num,
+    &.dark-mode .filter-nav__link:hover,
+    &.dark-mode .filter-nav__link:hover .filter-nav__num,
+    &.dark-mode .icon-button--ai.is_active ._assistive-text,
+    &.dark-mode .icon-button--ai.is_active svg.icon,
+    &.dark-mode .icon-button--ai:active ._assistive-text,
+    &.dark-mode .icon-button--ai:focus-visible ._assistive-text,
+    &.dark-mode .icon-button--ai:focus-visible svg.icon,
+    &.dark-mode .icon-button--ai:hover ._assistive-text,
+    &.dark-mode .icon-button--ai:hover svg.icon,
+    &.dark-mode .icon-button--default.is_active .iconic-text,
+    &.dark-mode .icon-button--default:focus-visible .iconic-text,
+    &.dark-mode .icon-button--default:hover .iconic-text,
+    &.dark-mode .icon-button--default[aria-expanded=true]:not(.-disabled-active) .iconic-text,
+    &.dark-mode .icon-button.-with-text.is_active ._assistive-text,
+    &.dark-mode .icon-button.-with-text:focus-visible ._assistive-text,
+    &.dark-mode .icon-button.-with-text:hover ._assistive-text,
+    &.dark-mode .icon-button.-with-text[aria-expanded=true]:not(.-disabled-active) ._assistive-text,
+    &.dark-mode .input-checkbox.-inverse+label,
+    &.dark-mode .issue-csv-import-dialog .confirmation-dialog .confirmation-dialog-title,
+    &.dark-mode .message--error,
+    &.dark-mode .message--integration:not(.-for-normal-users) .button:hover,
+    &.dark-mode .message--success,
+    &.dark-mode .message--warning,
+    &.dark-mode .modal__title,
+    &.dark-mode .pager__link.is_current,
+    &.dark-mode .pager__link:focus,
+    &.dark-mode .pager__link:hover,
+    &.dark-mode .pill,
+    &.dark-mode .project-list .project-launch-menu__link,
+    &.dark-mode .project-list__item:focus-within .project-launch-menu__text,
+    &.dark-mode .project-list__item:focus-within .project-list__key,
+    &.dark-mode .project-list__item:focus-within .project-list__name,
+    &.dark-mode .project-list__item:hover .project-launch-menu__text,
+    &.dark-mode .project-list__item:hover .project-list__key,
+    &.dark-mode .project-list__item:hover .project-list__name,
+    &.dark-mode .slide-in__title,
+    &.dark-mode .status,
+    &.dark-mode .status-label,
+    &.dark-mode .stream-update span.Action,
+    &.dark-mode .view-issue-file-upload__tooltip,
+    &.dark-mode [class^=Page--wiki] .card.-wiki-migration.is_done,
+    &.dark-mode [class^=Page--wiki] .card.-wiki-migration.is_done .title,
+    &.dark-mode [class^=Page--wiki] .card.-wiki-migration.is_not-yet,
+    &.dark-mode [class^=Page--wiki] .card.-wiki-migration.is_not-yet .title {
       color: var(--backgroundColorSchemeBase);
     }
-    .dark-mode .calendar__day.is_active,
-    .dark-mode .calendar__day.is_selected,
-    .dark-mode .icon-button--ai:active svg.icon,
-    .dark-mode .icon-button--primary ._assistive-text,
-    .dark-mode .icon-button--primary svg.icon,
-    .dark-mode .pill--issue-type-1,
-    .dark-mode .pill--issue-type-10,
-    .dark-mode .pill--issue-type-2,
-    .dark-mode .pill--issue-type-3,
-    .dark-mode .pill--issue-type-4,
-    .dark-mode .pill--issue-type-5,
-    .dark-mode .pill--issue-type-6,
-    .dark-mode .pill--issue-type-7,
-    .dark-mode .pill--issue-type-8,
-    .dark-mode .pill--issue-type-9 {
+    &.dark-mode .calendar__day.is_active,
+    &.dark-mode .calendar__day.is_selected,
+    &.dark-mode .icon-button--ai:active svg.icon,
+    &.dark-mode .icon-button--primary ._assistive-text,
+    &.dark-mode .icon-button--primary svg.icon,
+    &.dark-mode .pill--issue-type-1,
+    &.dark-mode .pill--issue-type-10,
+    &.dark-mode .pill--issue-type-2,
+    &.dark-mode .pill--issue-type-3,
+    &.dark-mode .pill--issue-type-4,
+    &.dark-mode .pill--issue-type-5,
+    &.dark-mode .pill--issue-type-6,
+    &.dark-mode .pill--issue-type-7,
+    &.dark-mode .pill--issue-type-8,
+    &.dark-mode .pill--issue-type-9 {
       color: var(--backgroundColorSchemeBase) !important;
     }
     // END GENERATED DARK TEXT
 
-  // Confirmed non-accent variant: retain the site's weak text on transparency.
-  .dark-mode .pill--square.-subtasking {
-    color: var(--textColorWeak);
-  }
-  :root:not(.dark-mode) body.Page--view-kanban .card {
-    background-color: var(--backgroundColorSchemeBase);
-  }
+    // Confirmed non-accent variant: retain the site's weak text on transparency.
+    &.dark-mode .pill--square.-subtasking {
+      color: var(--textColorWeak);
+    }
+    &:not(.dark-mode) body.Page--view-kanban .card {
+      background-color: var(--backgroundColorSchemeBase);
+    }
 
-  @wikiPages: ~".Page--edit-wiki", ~".Page--find-wiki", ~".Page--view-wiki", ~"[class^=Page--wiki]";
-  @wikiStates: is_not-yet warning, is_done success;
-  each(@wikiPages, .(@page) {
-    each(@wikiStates, .(@entry) {
-      @state: extract(@entry, 1);
-      @scale: extract(@entry, 2);
-      :root:root:root:root:root.dark-mode @{page} .card.-wiki-migration.@{state} {
-        a { color: var(--backgroundColorSchemeBase); }
-        .button { border-color: var(--backgroundColorSchemeBase); }
-        & when (@state = is_not-yet) {
-          .wiki-migration-image svg path { fill: var(--backgroundColorSchemeBase); }
+    &.dark-mode .button--primary.is_disabled,
+    &.dark-mode .button--primary[disabled] {
+      #disabledPrimary(@darkFlavor);
+    }
+
+    #disabledPrimary(@flavor) {
+      #lib.palette();
+      background-color: @surface1;
+    }
+
+    @wikiPages: ~".Page--edit-wiki", ~".Page--find-wiki", ~".Page--view-wiki", ~"[class^=Page--wiki]";
+    @wikiStates: is_not-yet warning, is_done success;
+    each(@wikiPages, .(@page) {
+      each(@wikiStates, .(@entry) {
+        @state: extract(@entry, 1);
+        @scale: extract(@entry, 2);
+        &:root:root:root:root.dark-mode @{page} .card.-wiki-migration.@{state} {
+          a { color: var(--backgroundColorSchemeBase); }
+          .button { border-color: var(--backgroundColorSchemeBase); }
+          & when (@state = is_not-yet) {
+            .wiki-migration-image svg path { fill: var(--backgroundColorSchemeBase); }
+          }
         }
-      }
-      :root:root:root:root:root:not(.dark-mode) @{page} .card.-wiki-migration.@{state} {
-        border-color: ~"var(--@{scale}ColorScaleAccent)";
-        & when (@state = is_not-yet) {
-          .wiki-migration-image svg path { fill: ~"var(--@{scale}ColorScaleText)"; }
-          .button {
-            background-color: ~"var(--@{scale}ColorScaleAccent)";
-            border-color: ~"var(--@{scale}ColorScaleAccent)";
-            color: var(--backgroundColorSchemeBase);
-            &:hover, &:focus, &:focus-visible {
-              background-color: var(--backgroundColorSchemeBase);
+        &:root:root:root:root:not(.dark-mode) @{page} .card.-wiki-migration.@{state} {
+          border-color: ~"var(--@{scale}ColorScaleAccent)";
+          & when (@state = is_not-yet) {
+            .wiki-migration-image svg path { fill: ~"var(--@{scale}ColorScaleText)"; }
+            .button {
+              background-color: ~"var(--@{scale}ColorScaleAccent)";
               border-color: ~"var(--@{scale}ColorScaleAccent)";
-              color: ~"var(--@{scale}ColorScaleAccent)";
-              outline-color: ~"var(--@{scale}ColorScaleAccent)";
+              color: var(--backgroundColorSchemeBase);
+              &:hover, &:focus, &:focus-visible {
+                background-color: var(--backgroundColorSchemeBase);
+                border-color: ~"var(--@{scale}ColorScaleAccent)";
+                color: ~"var(--@{scale}ColorScaleAccent)";
+                outline-color: ~"var(--@{scale}ColorScaleAccent)";
+              }
             }
           }
         }
-      }
+      });
     });
-  });
 
-  #tooltips(@flavor) {
-    #lib.palette();
-    .simptip-success { --tooltipBaseColor: @green !important; }
-    .simptip-info { --tooltipBaseColor: @blue !important; }
-    .simptip-danger, .simptip-error { --tooltipBaseColor: @red !important; }
-    .simptip-warning { --tooltipBaseColor: @yellow !important; }
-  }
+    #tooltips(@flavor) {
+      #lib.palette();
+      .simptip-success { --tooltipBaseColor: @green !important; }
+      .simptip-info { --tooltipBaseColor: @blue !important; }
+      .simptip-danger, .simptip-error { --tooltipBaseColor: @red !important; }
+      .simptip-warning { --tooltipBaseColor: @yellow !important; }
+    }
 
-  #catppuccin(@flavor) {
-    #lib.palette();
-    --headerAddButtonHoverBG: mix(@accent, @text, 80%);
-    .global-nav .icon-button.add-item-link {
-      background-color: var(--defaultColorAccent) !important;
-    }
-    .global-nav .icon-button.add-item-link:is(:hover, :focus) {
-      background-color: var(--headerAddButtonHoverBG) !important;
-    }
-    .global-nav .icon-button.add-item-link svg.icon {
-      fill: var(--backgroundColorSchemeBase) !important;
-    }
-    .upgrade-info__button {
-      color: var(--defaultColorAccent);
-      border-color: var(--defaultColorAccent);
-    }
-    .upgrade-info:hover .upgrade-info__button,
-    .upgrade-info:focus-within .upgrade-info__button {
-      background-color: var(--defaultColorAccent);
-      color: var(--backgroundColorSchemeBase);
-    }
-    .upgrade-bar.generic-cta-bar {
-      background-image: linear-gradient(45deg, @sapphire, @teal);
-    }
-    .na-choice-box.is_active {
-      border-color: @accent;
-    }
-    @projectBase: mix(@accent, @base, 20%);
-    @projectBase2: mix(@accent, @base, 8%);
-    @projectSub1: mix(@accent, @base, 50%);
-    .darkContent() when (@flavor = latte) { @darkContent: @text; }
-    .darkContent() when not (@flavor = latte) { @darkContent: @crust; }
-    .darkContent();
+    #catppuccin(@flavor) {
+      #lib.palette();
+      --headerAddButtonHoverBG: mix(@accent, @text, 80%);
+      .global-nav .icon-button.add-item-link {
+        background-color: var(--defaultColorAccent) !important;
+      }
+      .global-nav .icon-button.add-item-link:is(:hover, :focus) {
+        background-color: var(--headerAddButtonHoverBG) !important;
+      }
+      .global-nav .icon-button.add-item-link svg.icon {
+        fill: var(--backgroundColorSchemeBase) !important;
+      }
+      .upgrade-info__button {
+        color: var(--defaultColorAccent);
+        border-color: var(--defaultColorAccent);
+      }
+      .upgrade-info:hover .upgrade-info__button,
+      .upgrade-info:focus-within .upgrade-info__button {
+        background-color: var(--defaultColorAccent);
+        color: var(--backgroundColorSchemeBase);
+      }
+      .upgrade-bar.generic-cta-bar {
+        background-image: linear-gradient(45deg, @sapphire, @teal);
+      }
+      .na-choice-box.is_active {
+        border-color: @accent;
+      }
+      @projectBase: mix(@accent, @base, 20%);
+      @projectBase2: mix(@accent, @base, 8%);
+      @projectSub1: mix(@accent, @base, 50%);
+      .darkContent() when (@flavor = latte) { @darkContent: @text; }
+      .darkContent() when not (@flavor = latte) { @darkContent: @crust; }
+      .darkContent();
 
-    .surfaces() when (@flavor = latte) {
-      // Latte runs light to dark, opposite to Backlog's dark tokens.
-      @surfaceInput: @base;
-      @surfacePage: @mantle;
-      @surfaceSidebar: @crust;
-      @surfaceWeak: @mantle;
-      @surfaceDisabled: @crust;
-      @surfaceHover: @surface0;
-      @surfaceUpdate: @surface0;
-      @surfaceRaised: @surface0;
-      @surfaceUpdateHover: @surface1;
-      @surfaceHighlight: @surface2;
-    }
-    .surfaces() when not (@flavor = latte) {
-      @surfaceInput: @crust;
-      @surfacePage: @base;
-      @surfaceSidebar: @mantle;
-      @surfaceWeak: @mantle;
-      @surfaceDisabled: @surface0;
-      @surfaceHover: @surface1;
-      @surfaceUpdate: @surface0;
-      @surfaceRaised: @surface0;
-      @surfaceUpdateHover: @surface1;
-      @surfaceHighlight: @surface0;
-    }
-    .surfaces();
+      .surfaces() when (@flavor = latte) {
+        // Latte runs light to dark, opposite to Backlog's dark tokens.
+        @surfaceInput: @base;
+        @surfacePage: @mantle;
+        @surfaceSidebar: @crust;
+        @surfaceWeak: @mantle;
+        @surfaceDisabled: @crust;
+        @surfaceHover: @surface0;
+        @surfaceUpdate: @surface0;
+        @surfaceRaised: @surface0;
+        @surfaceUpdateHover: @surface1;
+        @surfaceHighlight: @surface2;
+      }
+      .surfaces() when not (@flavor = latte) {
+        @surfaceInput: @crust;
+        @surfacePage: @base;
+        @surfaceSidebar: @mantle;
+        @surfaceWeak: @mantle;
+        @surfaceDisabled: @surface0;
+        @surfaceHover: @surface1;
+        @surfaceUpdate: @surface0;
+        @surfaceRaised: @surface0;
+        @surfaceUpdateHover: @surface1;
+        @surfaceHighlight: @surface0;
+      }
+      .surfaces();
 
-    .project-nav__back {
-      background-color: @surfaceSidebar;
-    }
-    .project-nav-list__link {
-      color: @accent;
-    }
-    .project-nav-list__icon.icon {
-      fill: @accent !important;
-      color: @accent !important;
-    }
-    .project-nav-list__text {
-      color: @subtext1;
-    }
-    .project-nav-list__link:is(.is_active, :hover, :focus) {
-      color: @accent;
-      background-color: @surface0;
-      .project-nav-list__text {
+      .project-nav__back {
+        background-color: @surfaceSidebar;
+      }
+      .project-nav-list__link {
         color: @accent;
       }
-    }
-    .project-nav-list__link#navi-document .project-nav-list__beta {
-      color: @subtext1 !important;
-      outline-color: @subtext1 !important;
-      background-color: @surface0;
-    }
-    .project-nav-list__link#navi-document:is(.is_active, :hover, :focus) .project-nav-list__beta {
-      color: @accent !important;
-      outline-color: @accent !important;
-      background-color: @surface1;
-    }
-    .project-nav-ai-pr {
-      color: @subtext1;
-      background-color: @surfaceSidebar;
-    }
-    .project-nav-ai-pr__open-new-tab-icon.icon {
-      color: @accent;
-    }
-    .project-nav-ai-pr__icon.icon {
-      fill: @accent;
-    }
-    .project-nav-ai-pr:is(:hover, :focus) {
-      color: @accent;
-      background: @surface0;
-      .project-nav-ai-pr__icon.icon {
+      .project-nav-list__icon.icon {
+        fill: @accent !important;
+        color: @accent !important;
+      }
+      .project-nav-list__text {
+        color: @subtext1;
+      }
+      .project-nav-list__link:is(.is_active, :hover, :focus) {
+        color: @accent;
+        background-color: @surface0;
+        .project-nav-list__text {
+          color: @accent;
+        }
+      }
+      .project-nav-list__link#navi-document .project-nav-list__beta {
+        color: @subtext1 !important;
+        outline-color: @subtext1 !important;
         background-color: @surface0;
       }
-    }
-    .trigger-icon .trigger-icon__inner .trigger-icon__line,
-    .trigger-icon .trigger-icon__inner::before,
-    .trigger-icon .trigger-icon__inner::after {
-      background-color: @subtext1;
-    }
+      .project-nav-list__link#navi-document:is(.is_active, :hover, :focus) .project-nav-list__beta {
+        color: @accent !important;
+        outline-color: @accent !important;
+        background-color: @surface1;
+      }
+      .project-nav-ai-pr {
+        color: @subtext1;
+        background-color: @surfaceSidebar;
+      }
+      .project-nav-ai-pr__open-new-tab-icon.icon {
+        color: @accent;
+      }
+      .project-nav-ai-pr__icon.icon {
+        fill: @accent;
+      }
+      .project-nav-ai-pr:is(:hover, :focus) {
+        color: @accent;
+        background: @surface0;
+        .project-nav-ai-pr__icon.icon {
+          background-color: @surface0;
+        }
+      }
+      .trigger-icon .trigger-icon__inner .trigger-icon__line,
+      .trigger-icon .trigger-icon__inner::before,
+      .trigger-icon .trigger-icon__inner::after {
+        background-color: @subtext1;
+      }
 
-    --aiColor: @mauve;
-    --aiColorHover: @mauve;
-    --aiIconColor: @mauve;
-    --backgroundColorBase: @surfacePage;
-    --backgroundColorDefault: @surfacePage;
-    --backgroundColorDisabled: @surfaceDisabled;
-    --backgroundColorDsabled: @surfaceDisabled;
-    --backgroundColorHighlightUpdate: @surfaceHighlight;
-    --backgroundColorHover: @surfaceHover;
-    --backgroundColorPrimary: @surfaceRaised;
-    --backgroundColorSchemeBase: @surfaceInput;
-    --backgroundColorSchemeBase-rgb: red(@surfaceInput), green(@surfaceInput), blue(@surfaceInput);
-    --backgroundColorUpdate: @surfaceUpdate;
-    --backgroundColorUpdateHover: @surfaceUpdateHover;
-    --backgroundColorWeak: @surfaceWeak;
-    --backgroundColorWeakOnBaseBG: @surfaceWeak;
-    --borderColorAi: @mauve;
-    --borderColorCardBG: @surface1;
-    --borderColorDefault: @surface1;
-    --borderColorFormElement: @overlay0;
-    --borderColorOnBaseElement: @surface1;
-    --borderColorPrimary: @overlay0;
-    --borderColorWeak: @surface0;
-    --brandColorBacklog: @green;
-    --brandColorCacoo: @blue;
-    --brandColorNulab: @text;
-    --brandColorTypetalk: @peach;
-    --commonColorAcua: @teal;
-    --commonColorAcua-rgb: red(@teal), green(@teal), blue(@teal);
-    --commonColorBlack: @darkContent;
-    --commonColorBlack-rgb: red(@darkContent), green(@darkContent), blue(@darkContent);
-    --commonColorGray: @overlay0;
-    --commonColorGray-rgb: red(@overlay0), green(@overlay0), blue(@overlay0);
-    --commonColorGreen: @green;
-    --commonColorGreen-rgb: red(@green), green(@green), blue(@green);
-    --commonColorLime: @green;
-    --commonColorLime-rgb: red(@green), green(@green), blue(@green);
-    --commonColorOrange: @peach;
-    --commonColorOrange-rgb: red(@peach), green(@peach), blue(@peach);
-    --commonColorPink: @pink;
-    --commonColorPink-rgb: red(@pink), green(@pink), blue(@pink);
-    --commonColorPurple: @mauve;
-    --commonColorPurple-rgb: red(@mauve), green(@mauve), blue(@mauve);
-    --commonColorRed: @red;
-    --commonColorRed-rgb: red(@red), green(@red), blue(@red);
-    --commonColorShockingPink: @flamingo;
-    --commonColorShockingPink-rgb: red(@flamingo), green(@flamingo), blue(@flamingo);
-    --commonColorYellow: @yellow;
-    --commonColorYellow-rgb: red(@yellow), green(@yellow), blue(@yellow);
-    --color-border: @surface1;
-    --rgb-accent: red(@accent), green(@accent), blue(@accent);
-    --defaultColorAccent: @accent;
-    --defaultColorAccent-rgb: red(@accent), green(@accent), blue(@accent);
-    --defaultColorBase: @projectBase;
-    --defaultColorBase-2: @projectBase2;
-    --defaultColorBase-rgb: round(red(@projectBase)), round(green(@projectBase)), round(blue(@projectBase));
-    --defaultColorLink: @accent;
-    --defaultColorMain: @accent;
-    --defaultColorMainInverse: @base;
-    --defaultColorSub-1: @projectSub1;
-    --diffColorAddedBase: fade(@green, 16%);
-    --diffColorAddedBase-2: fade(@green, 16%);
-    --diffColorAddedBaseHover: fade(@green, 24%);
-    --diffColorAddedText: @green;
-    --diffColorChangedBase: fade(@yellow, 16%);
-    --diffColorChangedBase-2: fade(@yellow, 16%);
-    --diffColorChangedText: @yellow;
-    --diffColorDeletedBase: fade(@red, 16%);
-    --diffColorDeletedBase-2: fade(@red, 16%);
-    --diffColorDeletedBaseHover: fade(@red, 24%);
-    --diffColorDeletedText: @red;
-    --errorColorScaleAccent: @red;
-    --errorColorScaleBase: fade(@red, 16%);
-    --errorColorScaleText: @red;
-    --filesActionColor: @yellow;
-    --filesActionColor-rgb: red(@yellow), green(@yellow), blue(@yellow);
-    --gitActionColor: @peach;
-    --gitActionColor-rgb: red(@peach), green(@peach), blue(@peach);
-    --iconColorDefault: @subtext1;
-    --iconColorDisabled: @overlay0;
-    --iconColorDsabled: @overlay0;
-    --iconColorPseudo: @subtext0;
-    --iconColorWeak: @subtext0;
-    --issueActionColor: @green;
-    --issueActionColor-rgb: red(@green), green(@green), blue(@green);
-    --notificationColorDefault: @red;
-    --nuui-bg-marker-purple-default: fade(@mauve, 16%);
-    --nuui-text-marker-purple: @mauve;
-    --projectActionColor: @blue;
-    --projectActionColor-rgb: red(@blue), green(@blue), blue(@blue);
-    --pullRequestActionColor: @mauve;
-    --pullRequestActionColor-rgb: red(@mauve), green(@mauve), blue(@mauve);
-    --red: @red;
-    --starColorGreen: @green;
-    --starColorLime: @green;
-    --starColorRed: @red;
-    --starColorYellow: @yellow;
-    --statusColor-1: @red;
-    --statusColor-1-rgb: red(@red), green(@red), blue(@red);
-    --statusColor-2: @blue;
-    --statusColor-2-rgb: red(@blue), green(@blue), blue(@blue);
-    --statusColor-3: @green;
-    --statusColor-3-rgb: red(@green), green(@green), blue(@green);
-    --statusColor-4: @overlay1;
-    --statusColor-4-rgb: red(@overlay1), green(@overlay1), blue(@overlay1);
-    --statusColor-5: @yellow;
-    --statusColor-5-rgb: red(@yellow), green(@yellow), blue(@yellow);
-    --statusColor-other: @mauve;
-    --statusColor-other-rgb: red(@mauve), green(@mauve), blue(@mauve);
-    --successColorScaleAccent: @green;
-    --successColorScaleBase: fade(@green, 16%);
-    --successColorScaleText: @green;
-    --svnActionColor: @teal;
-    --svnActionColor-rgb: red(@teal), green(@teal), blue(@teal);
-    --textColorDefault: @text;
-    --textColorInverse: @base;
-    --textColorPrimary: @text;
-    --textColorQuote: @subtext0;
-    --textColorTabOff: @subtext0;
-    --textColorWeak: @subtext0;
-    --textColorWeak-rgb: red(@subtext0), green(@subtext0), blue(@subtext0);
-    --textColorWeightAdjustment: @text;
-    --tooltipBaseColor: @darkContent;
-    // Backlog redefines this on the elements themselves in dark mode, so the
-    // value inherited from :root/body does not reach them.
-    [data-tooltip], .message-tip {
+      --aiColor: @mauve;
+      --aiColorHover: @mauve;
+      --aiIconColor: @mauve;
+      --backgroundColorBase: @surfacePage;
+      --backgroundColorDefault: @surfacePage;
+      --backgroundColorDisabled: @surfaceDisabled;
+      --backgroundColorDsabled: @surfaceDisabled;
+      --backgroundColorHighlightUpdate: @surfaceHighlight;
+      --backgroundColorHover: @surfaceHover;
+      --backgroundColorPrimary: @surfaceRaised;
+      --backgroundColorSchemeBase: @surfaceInput;
+      --backgroundColorSchemeBase-rgb: red(@surfaceInput), green(@surfaceInput), blue(@surfaceInput);
+      --backgroundColorUpdate: @surfaceUpdate;
+      --backgroundColorUpdateHover: @surfaceUpdateHover;
+      --backgroundColorWeak: @surfaceWeak;
+      --backgroundColorWeakOnBaseBG: @surfaceWeak;
+      --borderColorAi: @mauve;
+      --borderColorCardBG: @surface1;
+      --borderColorDefault: @surface1;
+      --borderColorFormElement: @overlay0;
+      --borderColorOnBaseElement: @surface1;
+      --borderColorPrimary: @overlay0;
+      --borderColorWeak: @surface0;
+      --brandColorBacklog: @green;
+      --brandColorCacoo: @blue;
+      --brandColorNulab: @text;
+      --brandColorTypetalk: @peach;
+      --commonColorAcua: @teal;
+      --commonColorAcua-rgb: red(@teal), green(@teal), blue(@teal);
+      --commonColorBlack: @darkContent;
+      --commonColorBlack-rgb: red(@darkContent), green(@darkContent), blue(@darkContent);
+      --commonColorGray: @overlay0;
+      --commonColorGray-rgb: red(@overlay0), green(@overlay0), blue(@overlay0);
+      --commonColorGreen: @green;
+      --commonColorGreen-rgb: red(@green), green(@green), blue(@green);
+      --commonColorLime: @green;
+      --commonColorLime-rgb: red(@green), green(@green), blue(@green);
+      --commonColorOrange: @peach;
+      --commonColorOrange-rgb: red(@peach), green(@peach), blue(@peach);
+      --commonColorPink: @pink;
+      --commonColorPink-rgb: red(@pink), green(@pink), blue(@pink);
+      --commonColorPurple: @mauve;
+      --commonColorPurple-rgb: red(@mauve), green(@mauve), blue(@mauve);
+      --commonColorRed: @red;
+      --commonColorRed-rgb: red(@red), green(@red), blue(@red);
+      --commonColorShockingPink: @flamingo;
+      --commonColorShockingPink-rgb: red(@flamingo), green(@flamingo), blue(@flamingo);
+      --commonColorYellow: @yellow;
+      --commonColorYellow-rgb: red(@yellow), green(@yellow), blue(@yellow);
+      --color-border: @surface1;
+      --rgb-accent: red(@accent), green(@accent), blue(@accent);
+      --defaultColorAccent: @accent;
+      --defaultColorAccent-rgb: red(@accent), green(@accent), blue(@accent);
+      --defaultColorBase: @projectBase;
+      --defaultColorBase-2: @projectBase2;
+      --defaultColorBase-rgb: round(red(@projectBase)), round(green(@projectBase)), round(blue(@projectBase));
+      --defaultColorLink: @accent;
+      --defaultColorMain: @accent;
+      --defaultColorMainInverse: @base;
+      --defaultColorSub-1: @projectSub1;
+      --diffColorAddedBase: fade(@green, 16%);
+      --diffColorAddedBase-2: fade(@green, 16%);
+      --diffColorAddedBaseHover: fade(@green, 24%);
+      --diffColorAddedText: @green;
+      --diffColorChangedBase: fade(@yellow, 16%);
+      --diffColorChangedBase-2: fade(@yellow, 16%);
+      --diffColorChangedText: @yellow;
+      --diffColorDeletedBase: fade(@red, 16%);
+      --diffColorDeletedBase-2: fade(@red, 16%);
+      --diffColorDeletedBaseHover: fade(@red, 24%);
+      --diffColorDeletedText: @red;
+      --errorColorScaleAccent: @red;
+      --errorColorScaleBase: fade(@red, 16%);
+      --errorColorScaleText: @red;
+      --filesActionColor: @yellow;
+      --filesActionColor-rgb: red(@yellow), green(@yellow), blue(@yellow);
+      --gitActionColor: @peach;
+      --gitActionColor-rgb: red(@peach), green(@peach), blue(@peach);
+      --iconColorDefault: @subtext1;
+      --iconColorDisabled: @overlay0;
+      --iconColorDsabled: @overlay0;
+      --iconColorPseudo: @subtext0;
+      --iconColorWeak: @overlay0;
+      --issueActionColor: @green;
+      --issueActionColor-rgb: red(@green), green(@green), blue(@green);
+      --notificationColorDefault: @red;
+      --nuui-bg-marker-purple-default: fade(@mauve, 16%);
+      --nuui-text-marker-purple: @mauve;
+      --projectActionColor: @blue;
+      --projectActionColor-rgb: red(@blue), green(@blue), blue(@blue);
+      --pullRequestActionColor: @mauve;
+      --pullRequestActionColor-rgb: red(@mauve), green(@mauve), blue(@mauve);
+      --red: @red;
+      --starColorGreen: @green;
+      --starColorLime: @green;
+      --starColorRed: @red;
+      --starColorYellow: @yellow;
+      --statusColor-1: @red;
+      --statusColor-1-rgb: red(@red), green(@red), blue(@red);
+      --statusColor-2: @blue;
+      --statusColor-2-rgb: red(@blue), green(@blue), blue(@blue);
+      --statusColor-3: @green;
+      --statusColor-3-rgb: red(@green), green(@green), blue(@green);
+      --statusColor-4: @overlay1;
+      --statusColor-4-rgb: red(@overlay1), green(@overlay1), blue(@overlay1);
+      --statusColor-5: @yellow;
+      --statusColor-5-rgb: red(@yellow), green(@yellow), blue(@yellow);
+      --statusColor-other: @mauve;
+      --statusColor-other-rgb: red(@mauve), green(@mauve), blue(@mauve);
+      --successColorScaleAccent: @green;
+      --successColorScaleBase: fade(@green, 16%);
+      --successColorScaleText: @green;
+      --svnActionColor: @teal;
+      --svnActionColor-rgb: red(@teal), green(@teal), blue(@teal);
+      --textColorDefault: @text;
+      --textColorInverse: @base;
+      --textColorPrimary: @text;
+      --textColorQuote: @subtext0;
+      --textColorTabOff: @subtext0;
+      --textColorWeak: @subtext0;
+      --textColorWeak-rgb: red(@subtext0), green(@subtext0), blue(@subtext0);
+      --textColorWeightAdjustment: @text;
       --tooltipBaseColor: @darkContent;
+      // Backlog redefines this on the elements themselves in dark mode, so the
+      // value inherited from :root/body does not reach them.
+      [data-tooltip], .message-tip {
+        --tooltipBaseColor: @darkContent;
+      }
+      --warningColorScaleAccent: @yellow;
+      --warningColorScaleBase: fade(@yellow, 16%);
+      --warningColorScaleText: @yellow;
+      --wikiActionColor: @pink;
+      --wikiActionColor-rgb: red(@pink), green(@pink), blue(@pink);
     }
-    --warningColorScaleAccent: @yellow;
-    --warningColorScaleBase: fade(@yellow, 16%);
-    --warningColorScaleText: @yellow;
-    --wikiActionColor: @pink;
-    --wikiActionColor-rgb: red(@pink), green(@pink), blue(@pink);
   }
 }

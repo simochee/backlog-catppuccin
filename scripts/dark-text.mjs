@@ -134,7 +134,7 @@ export function renderDarkText({ overrides }) {
   }
   const rules = [...groups].map(([key, selectors]) => {
     const [context, important] = JSON.parse(key);
-    let rule = `${[...selectors].sort().map((selector) => `    ${selector}`).join(',\n')} {\n      color: var(--backgroundColorSchemeBase)${important ? ' !important' : ''};\n    }`;
+    let rule = `${[...selectors].sort().map((selector) => `    &${selector}`).join(',\n')} {\n      color: var(--backgroundColorSchemeBase)${important ? ' !important' : ''};\n    }`;
     for (const [name, params] of [...context].reverse()) rule = `    @${name} ${params} {\n${rule}\n    }`;
     return rule;
   });

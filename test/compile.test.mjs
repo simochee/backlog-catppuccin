@@ -7,7 +7,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { promisify } from 'node:util';
 import { execFile } from 'node:child_process';
 import postcss from 'postcss';
-import { compile, checkOverrides, checkNeutralOrder, parseColor, checkRGBCounterpart } from '../scripts/compile.mjs';
+import { compile, checkWeakTokens, checkErrorPageExclusion, errorPageScope, checkOverrides, checkNeutralOrder, parseColor, checkRGBCounterpart } from '../scripts/compile.mjs';
 import expectedOrder from './fixtures/neutral-order.json' with { type: 'json' };
 import { blockStart, blockEnd } from '../scripts/dark-text.mjs';
 
@@ -36,8 +36,8 @@ test('CLI checks execute from a path containing spaces and URL-encoded character
     .fixture() when (@flavor = latte) { ${assignments('latte')} }
     .fixture() when not (@flavor = latte) { ${assignments('mocha')} }
     .theme(@flavor) { .fixture(); }
-    :root { .theme(@lightFlavor); }
-    :root.dark-mode { .theme(@darkFlavor); }`);
+    ${errorPageScope} { .theme(@lightFlavor); }
+    ${errorPageScope}.dark-mode { .theme(@darkFlavor); }`);
   await writeFile(join(directory, 'mock-fetch.mjs'), `globalThis.fetch = async (url) => new Response(
     String(url).endsWith('.less') ? '/* fixture library */' :
     String(url).endsWith('.css') ? ':root { --backgroundColorBase: red; }' :
@@ -81,6 +81,8 @@ function surfaceValues(flavor = 'latte') {
   return Object.fromEntries([
     ...spec.order.flatMap((group, index) => group.map((name) => [name, shades[index]])),
     ['--borderColorDefault', '#bbbbbb'],
+    ['--iconColorWeak', '#777777'],
+    ['--textColorWeak', '#aaaaaa'],
   ]);
 }
 
@@ -127,7 +129,7 @@ test('latte rejects completely flat neutral surfaces', () => {
 });
 
 test('neutral ordering names missing properties', () => {
-  for (const name of Object.keys(surfaceValues())) {
+  for (const name of Object.keys(surfaceValues()).filter((name) => !['--iconColorWeak', '--textColorWeak'].includes(name))) {
     const values = surfaceValues();
     delete values[name];
     assert.throws(() => checkNeutralOrder(surfaces(values), 'latte'), (error) => error.message.includes(name));
@@ -158,10 +160,10 @@ test('RGB checks name mismatched and missing counterparts', () => {
   }
 });
 
-const scope = ':root:root:root:root:root';
+const scope = ':root:not(:has(> body.Page--error)):root:root:root:root';
 for (const color of ['#abc', '#aabbcc', 'rgb(10, 20, 30)', 'rgba(10, 20, 30, 0.5)', 'hsl(120, 50%, 50%)', 'rgb(10 20 30 / 50%)', 'hsl(120 50% 50%)']) {
   test(`override allowlist accepts themed colors in ${color}`, () => {
-    for (const prefix of [scope, `${scope}.dark-mode`, `${scope} body`]) {
+    for (const prefix of [scope, `${scope}.dark-mode`, `${scope} body:not(.Page--error)`]) {
       assert.doesNotThrow(() => checkOverrides(postcss.parse(`
         ${prefix} .na-choice-box.is_active { border-color: ${color}; }
         ${prefix} .upgrade-bar.generic-cta-bar { background-image: linear-gradient(45deg, ${color}, ${color}); }
@@ -185,8 +187,30 @@ test('override allowlist rejects mismatched selectors, values and unlisted prope
 test('override allowlist preserves token overrides and custom assignments', () => {
   assert.doesNotThrow(() => checkOverrides(postcss.parse(`
     :root { --example: #abc; }
-    .dark-mode .example { color: var(--backgroundColorSchemeBase); }
-    .dark-mode .pill--square.-subtasking { color: var(--textColorWeak); }
-    :root:not(.dark-mode) body.Page--view-kanban .card { background-color: var(--backgroundColorSchemeBase); }
+    :root:not(:has(> body.Page--error)).dark-mode .example { color: var(--backgroundColorSchemeBase); }
+    :root:not(:has(> body.Page--error)).dark-mode .pill--square.-subtasking { color: var(--textColorWeak); }
+    :root:not(:has(> body.Page--error)):not(.dark-mode) body.Page--view-kanban .card { background-color: var(--backgroundColorSchemeBase); }
   `)));
+});
+
+test('error-page exclusion rejects any unguarded selector, including mixed lists and nested contexts', () => {
+  for (const selector of [':root', 'body:not(.Page--error)', '.dark-mode .pill', `${errorPageScope}, .pill`, `[title="${errorPageScope}"]`]) {
+    assert.throws(() => checkErrorPageExclusion(postcss.parse(`@media screen {${selector} {--example:red}}`)), /Missing error-page guard/);
+  }
+  assert.doesNotThrow(() => checkErrorPageExclusion(postcss.parse(`${errorPageScope}, ${errorPageScope}.dark-mode .pill {--example:red}`)));
+});
+
+test('weak tokens must both exist and differ even with equivalent color syntax', () => {
+  assert.doesNotThrow(() => checkWeakTokens(surfaces()));
+  for (const value of ['#aaa', '#aaaaaa', 'rgb(170, 170, 170)']) {
+    const values = surfaceValues();
+    values['--iconColorWeak'] = value;
+    assert.throws(() => checkWeakTokens(surfaces(values)), /Weak tokens must differ/);
+  }
+  for (const token of ['--iconColorWeak', '--textColorWeak']) {
+    const values = surfaceValues();
+    delete values[token];
+    assert.throws(() => checkWeakTokens(surfaces(values)), (error) => error.message.includes(token));
+  }
+  assert.throws(() => checkWeakTokens(postcss.parse(':root {}')), /Missing weak token/);
 });

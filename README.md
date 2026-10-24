@@ -19,6 +19,7 @@ Phase 1 maps public CSS color tokens; visual verification is still pending.
    modes. The style follows the site's `.dark-mode` class on the root element.
 
 All subdomains of `backlog.com`, `backlog.jp`, and `backlogtool.com` are included.
+Error pages (`body.Page--error`) are excluded entirely and retain Backlog's own colors.
 An internet connection is needed to resolve the standard library during compilation.
 
 ## Development
@@ -83,8 +84,8 @@ Literal fallbacks in variable references are included; URLs and `currentColor`
 are excluded. Different selectors that might overlap remain for manual review.
 The command accepts the same optional extra stylesheet URLs described below.
 
-Generated text rules retain the site's dark selector specificity and declaration
-importance, so more specific states keep their colors. Generation and freshness
+Generated text rules add only the shared error-page guard to the site's dark
+selector specificity and retain declaration importance. Generation and freshness
 checks also print non-dark color selectors with equal or greater specificity
 that share a BEM block. This conservative report includes ancestors, descendants
 and different conditional contexts; it does not prove that selectors overlap or

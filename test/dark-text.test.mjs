@@ -2,9 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import postcss from 'postcss';
 import selectorParser from 'postcss-selector-parser';
-import { selectorSpecificity, compare } from '@csstools/selector-specificity';
+import { selectorSpecificity } from '@csstools/selector-specificity';
 import { findDarkText, renderDarkText, replaceDarkText, blockStart, blockEnd } from '../scripts/dark-text.mjs';
-import { checkOverrides } from '../scripts/compile.mjs';
+import less from 'less';
+import { errorPageScope, checkOverrides } from '../scripts/compile.mjs';
 
 const patterns = (sheets) => { const { a, b } = findDarkText(sheets); return { a, b }; };
 const primary = 'color: var(--textColorPrimary)';
@@ -64,7 +65,7 @@ test('same conditional context matches and selector commas within functions rema
 
 test('generated block is stable, deduplicated, and replacement leaves surrounding text alone', () => {
   const block = renderDarkText({ overrides: ['.z', '.a', '.z'].map((selector) => ({ selector: `.dark-mode ${selector}`, important: false, context: [] })) });
-  assert.equal(block, `${blockStart}\n    .dark-mode .a,\n    .dark-mode .z {\n      color: var(--backgroundColorSchemeBase);\n    }\n${blockEnd}`);
+  assert.equal(block, `${blockStart}\n    &.dark-mode .a,\n    &.dark-mode .z {\n      color: var(--backgroundColorSchemeBase);\n    }\n${blockEnd}`);
   const source = `before\n${blockStart}\nold\n${blockEnd}\nafter`;
   const updated = replaceDarkText(source, block);
   assert.equal(updated, `before\n${block}\nafter`);
@@ -75,7 +76,7 @@ test('generated block is stable, deduplicated, and replacement leaves surroundin
 });
 
 test('compiled override validation enforces dark-only text and light-only board scope', () => {
-  checkOverrides(postcss.parse('.dark-mode .pill--square.-subtasking {color:var(--textColorWeak)} .dark-mode .text {color:var(--backgroundColorSchemeBase)} .dark-mode .pill {color:var(--backgroundColorSchemeBase)!important} :root:not(.dark-mode) body.Page--view-kanban .card {background-color:var(--backgroundColorSchemeBase)}'));
+  checkOverrides(postcss.parse(`${errorPageScope}.dark-mode .pill--square.-subtasking {color:var(--textColorWeak)} ${errorPageScope}.dark-mode .text {color:var(--backgroundColorSchemeBase)} ${errorPageScope}.dark-mode .pill {color:var(--backgroundColorSchemeBase)!important} ${errorPageScope}:not(.dark-mode) body.Page--view-kanban .card {background-color:var(--backgroundColorSchemeBase)}`));
   for (const css of ['.dark-mode .other {color:var(--textColorWeak)}', '.pill {color:var(--backgroundColorSchemeBase)!important}', ':root:root:root:root:root.dark-mode .pill {color:var(--backgroundColorSchemeBase)}', '.card {background-color:var(--backgroundColorSchemeBase)}']) {
     assert.throws(() => checkOverrides(postcss.parse(css)), /Unexpected color override/);
   }
@@ -114,28 +115,25 @@ test('sidebar exclusion identifies classes rather than similar names or attribut
   assert.deepEqual(patterns([css]), { a: selectors, b: [] });
 });
 
-test('site state specificity keeps winning and only site important declarations stay important', () => {
-  const site = `.menu__text, .pill {color:var(--backgroundColorSchemeBase)}
-    .dark-mode  .menu__text {${primary}}
-    .dark-mode .menu__link:is(.is_active, :hover) .menu__text {${primary}}
-    .dark-mode .pill {${primary} !important}`;
-  const result = findDarkText([site]);
+test('generated selectors add only the shared guard specificity and retain importance', async () => {
+  const result = findDarkText([`.menu__text, .pill {color:var(--backgroundColorSchemeBase)}
+    .dark-mode .menu__text {${primary}}
+    .dark-mode .pill {${primary} !important}`]);
   const block = renderDarkText(result);
-  assert.match(block, /\.dark-mode \.menu__text/);
+  const { css } = await less.render(`${errorPageScope} {\n${block}\n}`);
   const rules = [];
-  postcss.parse(block.replaceAll(/^[ \t]*\/\/.*$/gm, '')).walkRules((rule) => rules.push(rule));
-  const normal = rules.find((rule) => rule.selector.includes('menu__text'));
-  assert.equal(Boolean(normal.first.important), false);
-  assert.ok(rules.find((rule) => rule.selector === '.dark-mode .pill').first.important);
-  assert.ok(!block.includes(':root'));
-  const matching = [];
-  postcss.parse(`${site}\n${block.replaceAll(/^[ \t]*\/\/.*$/gm, '')}`).walkRules((rule) => {
-    for (const selector of postcss.list.comma(rule.selector)) {
-      if (selector.endsWith('.menu__text')) matching.push({ selector, decl: rule.first });
-    }
-  });
-  matching.sort((x, y) => compare(selectorSpecificity(selectorParser().astSync(x.selector)), selectorSpecificity(selectorParser().astSync(y.selector))));
-  assert.equal(matching.at(-1).decl.value, 'var(--textColorPrimary)');
+  postcss.parse(css).walkRules((rule) => rules.push(rule));
+  const specificity = (selector) => selectorSpecificity(selectorParser().astSync(selector).first);
+  const guard = specificity(errorPageScope);
+  for (const { selector, important } of result.overrides) {
+    const guarded = `${errorPageScope}${selector}`;
+    const rule = rules.find((rule) => rule.selector === guarded);
+    assert.ok(rule, guarded);
+    assert.equal(Boolean(rule.first.important), important);
+    const before = specificity(selector);
+    assert.deepEqual(specificity(guarded), { a: before.a + guard.a, b: before.b + guard.b, c: before.c + guard.c });
+  }
+  checkOverrides(postcss.parse(css));
 });
 
 test('conflict report includes equal and greater BEM variants, excluding dark and unrelated blocks', () => {
@@ -158,12 +156,12 @@ test('override emission requires qualification in its own conditional context', 
   assert.ok(!renderDarkText(result).includes('@media print'));
 });
 
-test('pairing and output normalize whitespace and combinators without altering attribute values', () => {
+test('pairing and output normalize whitespace and combinators without altering attribute values', async () => {
   const result = findDarkText([`.list  > .item + .next ~ [title="two  words"] {color:var(--backgroundColorSchemeBase)}
     .dark-mode   .list>.item+.next~[title="two  words"] {${primary}}`]);
   assert.deepEqual(result.a, ['.list>.item+.next~[title="two  words"]']);
   assert.equal(result.overrides[0].selector, '.dark-mode .list>.item+.next~[title="two  words"]');
-  checkOverrides(postcss.parse(renderDarkText(result).replaceAll(/^[ \t]*\/\/.*$/gm, '')));
+  checkOverrides(postcss.parse((await less.render(`${errorPageScope} {\n${renderDarkText(result)}\n}`)).css));
 });
 
 test('accent background shorthands qualify including additional background components', () => {
