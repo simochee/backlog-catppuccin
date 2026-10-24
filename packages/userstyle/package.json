@@ -1,0 +1,15 @@
+{
+  "name": "@backlog-catppuccin/userstyle",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "devDependencies": {
+    "@csstools/selector-specificity": "6.0.1",
+    "color-name": "2.1.0",
+    "less": "4.6.7",
+    "postcss": "8.5.31",
+    "postcss-selector-parser": "7.1.7",
+    "postcss-value-parser": "4.2.0",
+    "vite-plus": "catalog:"
+  }
+}

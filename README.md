@@ -29,16 +29,33 @@ when a `styles_nu-ui/` stylesheet is linked directly from the page head.
 
 ## Development
 
-Use Node.js 24 or newer and npm. Install the pinned dependencies:
+Use Node.js 24.11 or newer and [Vite+](https://viteplus.dev/guide/).
+The pnpm workspace pins its package manager and toolchain. Install dependencies:
 
 ```sh
-npm ci --ignore-scripts
+vp install
 ```
+
+Run formatting, linting and TypeScript configuration checks:
+
+```sh
+vp check
+```
+
+The `packages/userstyle/` package owns the scripts, tests and fixtures. Its scripts
+read and write the single `catppuccin.user.less` at the repository root so Stylus's
+published update URL remains stable; source splitting is a separate change.
+`packages/extension/` is reserved for a future WXT package and is not created yet.
+Only the offline `check:less` task is cached. Live Backlog checks, extraction,
+generation and literal reports always run afresh.
+Oxfmt excludes the published LESS source and the hash-pinned library fixture to
+preserve their bytes. Type checks cover the TypeScript toolchain configuration;
+the existing JavaScript validators retain their runtime regression coverage.
 
 Extract color-variable **names**, one per line:
 
 ```sh
-npm run --silent extract
+node packages/userstyle/scripts/extract.mjs
 ```
 
 Check live color-variable coverage and image/color type parity (exits nonzero
@@ -46,7 +63,7 @@ on missing assignments or type mismatches, or if no new-design bundles or
 tokens are discovered):
 
 ```sh
-npm run check:coverage
+vp run check:coverage
 ```
 
 Compile the userstyle in all four flavors and check RGB triplets, independent
@@ -54,32 +71,31 @@ appearance switching, surface ordering, tooltip contrast, and new-design content
 contrast. The floor is 3:1 except for Latte solid role surfaces, which have a
 2.5:1 floor; each pair below 3:1 is listed in the output. Default tooltips retain
 3:1 in every flavor. The Latte success tooltip uses the solid-surface exception
-because neither flavor ink reaches 3:1 on green. This check fetches only the
-Catppuccin library and does not request Backlog pages or stylesheets:
+because neither flavor ink reaches 3:1 on green. This check uses the pinned Catppuccin library fixture and makes no network requests:
 
 ```sh
-npm run check:less
+vp run check:less
 ```
 
-Run extraction and coverage regression tests:
+Run the regression tests:
 
 ```sh
-npm test
+vp test
 ```
 
 Regenerate the dark-mode accent-surface text selectors, or check the committed
 block against live CSS (the latter runs in the non-required coverage CI job):
 
 ```sh
-npm run generate:dark-text
-npm run check:dark-text
+vp run generate:dark-text
+vp run check:dark-text
 ```
 
 Report remaining literal color rules for manual triage (not a CI check):
 
 ```sh
-npm run report:literals
-npm run report:literals -- --new-design
+vp run report:literals
+vp run report:literals --new-design
 ```
 
 The report groups selectors by stylesheet and prints property names with only
@@ -123,16 +139,16 @@ and checking, including authenticated-page AI/document bundle URLs when availabl
 Only HTTPS URLs on `assets.backlog.com` are accepted:
 
 ```sh
-npm run check:coverage -- "$EXTRA_STYLESHEET_URL"
-npm run --silent extract -- "$EXTRA_STYLESHEET_URL"
-npm run generate:dark-text -- "$EXTRA_STYLESHEET_URL"
-npm run check:dark-text -- "$EXTRA_STYLESHEET_URL"
+vp run check:coverage "$EXTRA_STYLESHEET_URL"
+vp run extract "$EXTRA_STYLESHEET_URL"
+vp run generate:dark-text "$EXTRA_STYLESHEET_URL"
+vp run check:dark-text "$EXTRA_STYLESHEET_URL"
 ```
 
 Downloads stay in memory. Neither downloaded CSS/HTML nor original variable
 values are written to disk by these scripts. Extraction stdout contains names
 only; source diagnostics and exclusions go to stderr. The compile check uses a SHA-256 pinned, MIT-attributed copy of the public
-Catppuccin standard library in `test/fixtures/` and makes no network requests.
+Catppuccin standard library in `packages/userstyle/test/fixtures/` and makes no network requests.
 It runs the userstyle sequentially through all 15 accents, four flavors, and both
 Latte/Mocha mixed directions. Guard structure, main overrides and RGB aliases,
 neutral states, contrast, new-design token types, and CIE76 palette distance are checked;
@@ -154,7 +170,7 @@ Marker tints use 14% subtle and 20% highlight in Latte, 8% subtle and 12%
 highlight in dark flavors, and 24% Latte default/shape; dark default/shape
 markers retain solid palette hues. Marker borders use 16% subtle and 30% default.
 The LESS ink table defines each hue and background-role correction once.
-`scripts/style-policy.mjs` derives exact-color exceptions from that table and
+`packages/userstyle/scripts/style-policy.mjs` derives exact-color exceptions from that table and
 checks compiled lightness deltas against the 20% cap. Latte accent fills use the
 smallest 0.1% correction reaching 2.5:1 with base ink where necessary. Primary
 hover/active colors change lightness by 2%/4%; disabled neutral surfaces use 3%

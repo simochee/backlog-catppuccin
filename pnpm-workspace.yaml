@@ -1,0 +1,8 @@
+packages:
+  - packages/*
+
+catalog:
+  vite-plus: 1.4.0
+
+onlyBuiltDependencies:
+  - vite-plus
