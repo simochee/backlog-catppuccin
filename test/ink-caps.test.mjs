@@ -21,3 +21,15 @@ test('compiled ink checks reject excess corrections regardless of helper names',
   }
 });
 
+test('darken and lighten explain missing, unitless and non-percent amounts with the call and filename', async () => {
+  for (const name of ['darken', 'lighten']) for (const amount of ['', ', 10', ', 10px', ', 10deg', ', red']) {
+    const call = `${name}(#aabbcc${amount})`;
+    await assert.rejects(compile('latte', `@import "https://userstyles.catppuccin.com/lib/std/v1.less"; a {color: ${call};}`, library), (error) => {
+      assert.equal(error.type, 'Runtime');
+      assert.ok(error.message.includes(`${name}(`));
+      assert.match(error.message, /in input.*requires 0–20%/);
+      assert.doesNotMatch(error.message, /TypeError/);
+      return true;
+    });
+  }
+});

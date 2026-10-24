@@ -13,4 +13,3 @@ test('legacy and new-design guard validation reject guards from the other sectio
   assert.throws(() => checkErrorPageExclusion(styleSubsets(wrongNew).nu, 'new'), /design guard/);
   assert.throws(() => checkErrorPageExclusion(wrongNew, true), /Unknown design section/);
 });
-

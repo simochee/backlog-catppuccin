@@ -19,4 +19,3 @@ test('Latte fill corrections are the first 0.1% step reaching the label floor', 
     assert.ok(contrastRatio(p.base, previous, p.base) < 2.5);
   }
 });
-

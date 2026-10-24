@@ -11,4 +11,3 @@ test('selectorless at-rule declarations do not enter rule-only checks', () => {
   assert.doesNotThrow(() => checkSharedContrast(css, {light:'mocha', dark:'mocha'}));
   assert.doesNotThrow(() => checkOverrides(css));
 });
-

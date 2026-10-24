@@ -33,3 +33,12 @@ test('all accents use one emitted fill and choose ink against that fill in both 
     assert.ok(contrastRatio(ink, fill, palettes[flavor].base) >= (flavor === 'latte' ? 2.5 : 3));
   }
 });
+
+test('main contrast reports exceptions and deviations without logging passing pairs', () => {
+  const messages = [];
+  checkMainContrast(compiled.get('mocha'), { light: 'mocha', dark: 'mocha' }, (message) => messages.push(message));
+  assert.deepEqual(messages, []);
+  const css = compiled.get('mocha').clone();
+  css.walkDecls('--defaultColorAccent', (decl) => { decl.value = palettes.mocha.base; });
+  assert.throws(() => checkMainContrast(css, { light: 'mocha', dark: 'mocha' }, () => {}), /base ink.*< 3:1/);
+});

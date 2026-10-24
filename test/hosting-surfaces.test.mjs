@@ -19,6 +19,7 @@ for (const [flavor, css] of compiled) {
     });
   });
 }
+
 test('raised-surface remaps are checked independently of the default surface', () => {
   for (const surface of ['bg-subtle', 'bg-floating']) {
     const nu = styleSubsets(compiled.get('frappe')).nu;
@@ -26,4 +27,3 @@ test('raised-surface remaps are checked independently of the default surface', (
     assert.throws(() => checkNuStyle(nu, 'frappe', () => {}), new RegExp(`over ${surface}`));
   }
 });
-

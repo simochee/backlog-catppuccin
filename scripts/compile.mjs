@@ -44,8 +44,12 @@ export async function compile(flavor, source, library, darkFlavor = flavor, acce
           if (!['darken', 'lighten'].includes(call.name.toLowerCase())) return;
           const evaluate = call.eval;
           call.eval = function(context) {
-            const amount = this.args[1].eval(context);
-            if (amount.unit?.toString() !== '%' || amount.value < 0 || amount.value > 20) throw { type: 'Runtime', message: 'Ink correction requires 0–20%' };
+            const amount = this.args[1]?.eval(context);
+            if (amount?.unit?.toString() !== '%' || !Number.isFinite(amount.value) || amount.value < 0 || amount.value > 20) {
+              const filename = this.fileInfo()?.filename;
+              throw { type: 'Runtime', index: this.getIndex(), filename,
+                message: `${this.name}(${this.args.map((arg) => arg.toCSS()).join(', ')})${filename ? ` in ${filename}` : ''}: Ink correction requires 0–20% (percentage amount required)` };
+            }
             return evaluate.call(this, context);
           };
         },
@@ -609,8 +613,8 @@ export const accents = ['rosewater', 'flamingo', 'pink', 'mauve', 'red', 'maroon
 export async function validateStyles({ sources, library, report = console.log, render = compile }) {
   const failures = [];
   const checked = async (label, action) => {
-    try { const message = await action(); if (message) report(`${label}: ${message}`); }
-    catch (error) { failures.push(`${label}: ${error.message}`); }
+    try { await action(); return true; }
+    catch (error) { failures.push(`${label}: ${error.message}`); return false; }
   };
   for (const [file, source] of Object.entries(sources)) await checked(`${file} source policy`, () => checkDerivedSource(source));
   for (const [light, dark] of [
@@ -626,11 +630,12 @@ export async function validateStyles({ sources, library, report = console.log, r
           const scope = `${file} ${label}`;
           const { legacy, nu: nuCSS, modes: subsets } = styleSubsets(css);
           const allowlists = {};
+          const failureCount = failures.length;
           await checked(`${scope} guards`, () => checkErrorPageExclusion(legacy));
           await checked(`${scope} type parity`, () => checkNuTokenTypes(nuCSS, nuTokenTypes));
           await checked(`${scope} surfaces/contrast`, () => checkNuStyle(nuCSS, label, report, false, modes));
           await checked(`${scope} ink deviations`, () => checkOnAccentInk(nuCSS, modes, report, label));
-          await checked(`${scope} correction caps`, () => { for (const [mode, flavor] of Object.entries(modes)) allowlists[mode] = compiledInkAllowlist(subsets[mode], flavor); });
+          const correctionsValid = await checked(`${scope} correction caps`, () => { for (const [mode, flavor] of Object.entries(modes)) allowlists[mode] = compiledInkAllowlist(subsets[mode], flavor); });
           await checked(`${scope} overrides`, () => checkOverrides(css));
           await checked(`${scope} shared allowlist`, () => checkSharedAllowlist(css));
           await checked(`${scope} chrome/line numbers`, () => checkSharedContrast(css, modes));
@@ -642,11 +647,11 @@ export async function validateStyles({ sources, library, report = console.log, r
             const subset = subsets[mode];
             await checked(`${scope} ${mode} surfaces`, () => checkNeutralOrder(subset, flavor));
           }
-          for (const [mode, flavor] of Object.entries(modes)) {
+          if (correctionsValid) for (const [mode, flavor] of Object.entries(modes)) {
             const subset = subsets[mode];
             await checked(`${scope} ${mode} ΔE`, () => checkPalette(subset, flavor, { allowlist: allowlists[mode] }));
           }
-          if (accent === 'mauve' && light === dark) report(`${light}: PASS`);
+          if (failures.length === failureCount) report(`${scope}: PASS`);
         });
       }
     }
@@ -668,7 +673,7 @@ export function checkMainContrast(css, modes, report = console.log, label = '') 
       const ratio = contrastRatio(base, background, values.get('--backgroundColorBase'));
       const floor = flavor === 'latte' ? 2.5 : 3;
       if (ratio < floor) throw new Error(`${label} base ink / ${token}: ${ratio.toFixed(3)}:1 < ${floor}:1`);
-      report(`${label} base ink / ${token}: ${ratio.toFixed(3)}:1 [${rule.selector}]`);
+      if (ratio < 3) report(`${label} contrast exception: base ink / ${token}: ${ratio.toFixed(3)}:1 >= 2.5:1 [${rule.selector}]`);
       count++;
     }
     for (const token of ['--defaultColorAccent', '--headerAddButtonHoverBG']) {

@@ -36,5 +36,4 @@ for (const [flavor, css] of compiled) {
     assert.equal(inputs, 4);
     assert.equal(cards, 1);
   });
-
 }
