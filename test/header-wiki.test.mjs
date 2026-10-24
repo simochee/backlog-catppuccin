@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import postcss from 'postcss';
 import { selectorSpecificity, compare } from '@csstools/selector-specificity';
 import selectorParser from 'postcss-selector-parser';
-import { compile, checkOverrides, tokenOverrides, scopePattern } from '../scripts/compile.mjs';
+import { compile, darkScope, errorPageScope, checkErrorPageExclusion, checkOverrides, tokenOverrides, scopePattern } from '../scripts/compile.mjs';
 
 const source = await readFile(new URL('../catppuccin.user.less', import.meta.url), 'utf8');
 const library = `#lib() { .palette() {
@@ -16,7 +16,7 @@ const library = `#lib() { .palette() {
   @green: @accent; @blue: @accent; @red: @accent; @peach: @accent;
   @yellow: @accent; @pink: @accent; @flamingo: @accent;
 } }`;
-const scope = ':root:root:root:root:root';
+const scope = ':root:root:root:root:root:where(:not(:has(> body.Page--error)))';
 const flavoredScopes = ['', '.dark-mode'].flatMap((mode) =>
   ['', ' body'].map((body) => `${scope}${mode}${body} `));
 const expected = tokenOverrides.flatMap(({ scope, selector, property, token, important }) =>
@@ -24,9 +24,25 @@ const expected = tokenOverrides.flatMap(({ scope, selector, property, token, imp
     .map((prefix) => [`${prefix}${selector}`, property, token, important]));
 
 for (const flavor of ['latte', 'frappe', 'macchiato', 'mocha']) {
-  test(`${flavor} header and migration overrides retain tokens, appearance scope and importance`, async () => {
+  test(`${flavor} compiled rules exclude error pages and preserve component tokens and disabled states`, async () => {
     const css = postcss.parse((await compile(flavor, source, library)).css);
     checkOverrides(css);
+    checkErrorPageExclusion(css);
+    const roots = [];
+    css.walkRules((rule) => { if (rule.selector === scope) roots.push(rule); });
+    assert.equal(roots[0].nodes.find((decl) => decl.prop === '--iconColorWeak').value, flavor === 'latte' ? '#333333' : '#444444');
+    for (const state of ['.is_disabled', '[disabled]']) {
+      const selector = `${darkScope} .button--primary${state}`;
+      const declarations = [];
+      css.walkRules((rule) => {
+        if (postcss.list.comma(rule.selector).includes(selector)) declarations.push(...rule.nodes);
+        assert.ok(!postcss.list.comma(rule.selector).includes(`${errorPageScope} .button--primary${state}`));
+      });
+      assert.equal(declarations.length, 1);
+      assert.equal(declarations[0].prop, 'background-color');
+      assert.equal(declarations[0].value, '#aaaaaa');
+      assert.equal(Boolean(declarations[0].important), false);
+    }
     for (const [selector, property, token, important] of expected) {
       const found = [];
       css.walkRules((rule) => {
@@ -77,5 +93,19 @@ test('header interaction mix differs from rest and migration states outrank rest
   for (const { scope, selector } of tokenOverrides.filter(({ selector }) => / \.button:(hover|focus)/.test(selector))) {
     const prefix = scope.literal;
     assert.ok(compare(specificity(prefix + selector), specificity(prefix + selector.replace(/:(hover|focus-visible|focus)$/, ''))) > 0);
+  }
+});
+
+test('disabled primary allowlist enforces dark scope, state, background and importance', () => {
+  for (const state of ['.is_disabled', '[disabled]']) {
+    const selector = `${darkScope} .button--primary${state}`;
+    assert.doesNotThrow(() => checkOverrides(postcss.parse(`${selector} {background-color:#abc}`)));
+    for (const rule of [
+      `${selector.replace('.dark-mode', '')} {background-color:#abc}`,
+      `${selector.replace(state, ':hover')} {background-color:#abc}`,
+      `${selector} {background-color:#abc!important}`,
+      `${selector} {color:#abc}`,
+      `${selector}, .button--primary${state} {background-color:#abc}`,
+    ]) assert.throws(() => checkOverrides(postcss.parse(rule)), /Unexpected color override/);
   }
 });

@@ -20,7 +20,7 @@ for (const flavor of ['latte', 'frappe', 'macchiato', 'mocha']) {
     const css = postcss.parse((await compile(flavor, source, library)).css);
     checkOverrides(css);
     for (const mode of ['', '.dark-mode']) {
-      const scope = `:root:root:root:root:root${mode}`;
+      const scope = `:root:root:root:root:root:where(:not(:has(> body.Page--error)))${mode}`;
       const declaration = (selector, property, required = true) => {
         let found;
         css.walkRules((rule) => {
@@ -69,9 +69,9 @@ for (const flavor of ['latte', 'frappe', 'macchiato', 'mocha']) {
 
 test('sidebar override validation rejects layout, unrelated selectors and missing flavor scope', () => {
   for (const rule of [
-    ':root:root:root:root:root .project-nav__back {display:none}',
-    ':root:root:root:root:root .project-nav-list__text {background-color:#abc}',
-    ':root:root:root:root:root .project-nav-other {color:#abc}',
+    ':root:root:root:root:root:where(:not(:has(> body.Page--error))) .project-nav__back {display:none}',
+    ':root:root:root:root:root:where(:not(:has(> body.Page--error))) .project-nav-list__text {background-color:#abc}',
+    ':root:root:root:root:root:where(:not(:has(> body.Page--error))) .project-nav-other {color:#abc}',
     '.project-nav-list__text {color:#abc}',
   ]) assert.throws(() => checkOverrides(postcss.parse(rule)), /Unexpected color override/);
 });
@@ -82,7 +82,7 @@ test('mixed flavors give each sidebar its own recessed surface', async () => {
   for (const [mode, expected] of [['', '#cccccc'], ['.dark-mode', '#dddddd']]) {
     const values = [];
     css.walkRules((rule) => {
-      if (postcss.list.comma(rule.selector).includes(`:root:root:root:root:root${mode} .project-nav__back`)) {
+      if (postcss.list.comma(rule.selector).includes(`:root:root:root:root:root:where(:not(:has(> body.Page--error)))${mode} .project-nav__back`)) {
         for (const decl of rule.nodes) if (decl.prop === 'background-color') values.push(decl.value);
       }
     });
@@ -91,12 +91,12 @@ test('mixed flavors give each sidebar its own recessed surface', async () => {
 });
 
 test('sidebar allowlist validates each selector in mixed comma lists', () => {
-  const allowed = ':root:root:root:root:root .project-nav__back';
-  const unlisted = ':root:root:root:root:root .project-nav-other';
+  const allowed = ':root:root:root:root:root:where(:not(:has(> body.Page--error))) .project-nav__back';
+  const unlisted = ':root:root:root:root:root:where(:not(:has(> body.Page--error))) .project-nav-other';
   for (const selectors of [`${allowed}, ${unlisted}`, `${unlisted}, ${allowed}`, `${allowed}, .project-nav__back`]) {
     assert.throws(() => checkOverrides(postcss.parse(`${selectors} {background-color:#abc}`)), /Unexpected color override/);
   }
-  const icon = ':root:root:root:root:root .project-nav-ai-pr:is(:hover, :focus) .project-nav-ai-pr__icon.icon';
+  const icon = ':root:root:root:root:root:where(:not(:has(> body.Page--error))) .project-nav-ai-pr:is(:hover, :focus) .project-nav-ai-pr__icon.icon';
   for (const property of ['background', 'fill']) {
     assert.throws(() => checkOverrides(postcss.parse(`${icon} {${property}:#abc}`)), /Unexpected color override/);
   }

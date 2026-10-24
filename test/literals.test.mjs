@@ -99,3 +99,11 @@ test('ranks only classes directly in the subject compound using code-unit order'
   assert.deepEqual(ranking.filter(({ count }) => count === 4).map(({ selector }) => selector),
     selectors.filter((selector) => selector.includes('.widget') && !selector.includes('span')).sort());
 });
+
+test('guarded overrides still cover non-error component literals', () => {
+  const report = findLiterals([{ url: 'https://assets.backlog.com/test.css', css: '.dark-mode .pill {color:red} .choice {border-color:red}' }], `
+    .dark-mode:where(:not(:has(> body.Page--error))) .pill {color:var(--backgroundColorSchemeBase)}
+    :root:root:root:root:root:where(:not(:has(> body.Page--error))) .choice {border-color:var(--defaultColorAccent)}
+  `);
+  assert.deepEqual(report, []);
+});

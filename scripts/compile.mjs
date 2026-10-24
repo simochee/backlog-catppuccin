@@ -2,6 +2,7 @@ import { pathToFileURL } from 'node:url';
 import { readFile } from 'node:fs/promises';
 import less from 'less';
 import postcss from 'postcss';
+import selectorParser from 'postcss-selector-parser';
 import { download } from './source.mjs';
 import expectedOrder from '../test/fixtures/neutral-order.json' with { type: 'json' };
 
@@ -101,10 +102,15 @@ export function checkNeutralOrder(css, flavor) {
   return `${flavor} neutral ordering: PASS (${spec.direction}, ${checked} rules)`;
 }
 
-const flavoredScope = ':root(?::root){4}(?:\\.dark-mode)?(?: body)? ';
+const escapeSelector = (selector) => selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+export const errorPageGuard = ':where(:not(:has(> body.Page--error)))';
+export const errorPageGuardPattern = escapeSelector(errorPageGuard);
+export const errorPageScope = `:root${errorPageGuard}`;
+export const darkScope = `.dark-mode${errorPageGuard}`;
+export const rootTokenScope = `${':root'.repeat(5)}${errorPageGuard}`;
+const flavoredScope = `${escapeSelector(rootTokenScope)}(?:\\.dark-mode)?(?: body)? `;
 const channel = '[+-]?(?:\\d*\\.)?\\d+%?';
 const color = `(?:#(?:[\\da-f]{3}|[\\da-f]{4}|[\\da-f]{6}|[\\da-f]{8})|(?:rgb|rgba|hsl|hsla)\\(\\s*${channel}(?:\\s*,\\s*|\\s+)${channel}(?:\\s*,\\s*|\\s+)${channel}(?:\\s*[,/]\\s*${channel})?\\s*\\))`;
-const escapeSelector = (selector) => selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const flavoredOverrideScope = { pattern: flavoredScope };
 const literalScope = (literal) => ({ literal });
 const override = (scope, selector, property, token, important = false) =>
@@ -121,8 +127,8 @@ export const tokenOverrides = [
   ...['.Page--edit-wiki', '.Page--find-wiki', '.Page--view-wiki', '[class^=Page--wiki]'].flatMap((page) =>
     [['is_not-yet', 'warning'], ['is_done', 'success']].flatMap(([state, scale]) => {
       const card = `${page} .card.-wiki-migration.${state}`;
-      const light = literalScope(':root:root:root:root:root:not(.dark-mode) ');
-      const dark = literalScope(':root:root:root:root:root.dark-mode ');
+      const light = literalScope(`${rootTokenScope}:not(.dark-mode) `);
+      const dark = literalScope(`${rootTokenScope}.dark-mode `);
       const accent = `--${scale}ColorScaleAccent`;
       return [
         override(dark, `${card} a`, 'color', '--backgroundColorSchemeBase'),
@@ -148,15 +154,21 @@ export const scopePattern = (scope) => {
   throw new Error('Scope must be a pattern or literal');
 };
 const overrideAllowlist = [
+  ...['.button--primary.is_disabled', '.button--primary[disabled]'].map((selector) => ({
+    selector: new RegExp(`^${escapeSelector(`${darkScope} ${selector}`)}$`),
+    property: 'background-color',
+    value: new RegExp(`^${color}$`, 'i'),
+    important: false,
+  })),
   ...tokenOverrides.map(({ scope, selector, property, token, important }) => ({
     selector: new RegExp(`^${scopePattern(scope)}${escapeSelector(selector)}$`),
     property,
     value: new RegExp(`^var\\(${token}\\)$`),
     important,
   })),
-  { selector: new RegExp(`^${escapeSelector('.dark-mode ')}.+$`), property: 'color', value: /^var\(--backgroundColorSchemeBase\)$/ },
-  { selector: new RegExp(`^${escapeSelector('.dark-mode .pill--square.-subtasking')}$`), property: 'color', value: /^var\(--textColorWeak\)$/, important: false },
-  { selector: new RegExp(`^${escapeSelector(':root:not(.dark-mode) body.Page--view-kanban .card')}$`), property: 'background-color', value: /^var\(--backgroundColorSchemeBase\)$/ },
+  { selector: new RegExp(`^${escapeSelector(`${darkScope} `)}.+$`), property: 'color', value: /^var\(--backgroundColorSchemeBase\)$/ },
+  { selector: new RegExp(`^${escapeSelector(`${darkScope} .pill--square.-subtasking`)}$`), property: 'color', value: /^var\(--textColorWeak\)$/, important: false },
+  { selector: new RegExp(`^${escapeSelector(`${errorPageScope}:not(.dark-mode) body.Page--view-kanban .card`)}$`), property: 'background-color', value: /^var\(--backgroundColorSchemeBase\)$/ },
   { selector: new RegExp(`^${flavoredScope}${escapeSelector('.upgrade-bar.generic-cta-bar')}$`), property: 'background-image', value: new RegExp(`^linear-gradient\\(45deg, ${color}, ${color}\\)$`, 'i') },
   { selector: new RegExp(`^${flavoredScope}${escapeSelector('.na-choice-box.is_active')}$`), property: 'border-color', value: new RegExp(`^${color}$`, 'i') },
   ...[...sidebarProperties].flatMap(([selector, properties]) => properties.map((property) => ({
@@ -165,6 +177,73 @@ const overrideAllowlist = [
     value: new RegExp(`^${color}$`, 'i'),
   }))),
 ];
+
+export function checkOverrides(css) {
+  css.walkDecls((decl) => {
+    if (decl.prop.startsWith('--')) return;
+    const selectors = postcss.list.comma(decl.parent.selector);
+    if (!selectors.every((selector) => overrideAllowlist.some((entry) => entry.property === decl.prop &&
+        entry.value.test(decl.value) && (entry.important === undefined || entry.important === Boolean(decl.important)) &&
+        entry.selector.test(selector)))) {
+      throw new Error(`Unexpected color override: ${decl.parent.selector} / ${decl.prop}`);
+    }
+  });
+}
+
+const guardAST = selectorParser().astSync(errorPageGuard, { lossless: false }).first.first;
+const nodeShape = (node) => [node.type, node.type === 'combinator' ? node.value.trim() : node.value,
+  node.namespace, node.nodes?.map(nodeShape)];
+const guardShape = JSON.stringify(nodeShape(guardAST));
+
+export function checkErrorPageExclusion(css) {
+  css.walkRules((rule) => {
+    for (let parent = rule.parent; parent; parent = parent.parent) {
+      if (parent.type === 'atrule' && /^(?:-\w+-)?keyframes$/i.test(parent.name)) return;
+    }
+    const ast = selectorParser().astSync(rule.selector);
+    for (const selector of ast.nodes) {
+      const end = selector.nodes.findIndex((node) => node.type === 'combinator');
+      const compound = selector.nodes.slice(0, end < 0 ? undefined : end);
+      const anchored = compound.some((node) =>
+        (node.type === 'pseudo' && node.value === ':root') || (node.type === 'class' && node.value === 'dark-mode'));
+      if (!anchored || !compound.some((node) => JSON.stringify(nodeShape(node)) === guardShape)) {
+        throw new Error(`Missing error-page guard: ${selector}`);
+      }
+    }
+  });
+}
+
+const luminance = (channels) => channels.map((channel) => {
+  const value = channel / 255;
+  return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+}).reduce((sum, value, index) => sum + value * [0.2126, 0.7152, 0.0722][index], 0);
+
+export function checkDisabledContrast(css, flavor) {
+  if (flavor === 'latte') return;
+  const labels = [];
+  const backgrounds = new Map();
+  css.walkRules((rule) => {
+    for (const selector of postcss.list.comma(rule.selector)) {
+      for (const decl of rule.nodes) {
+        if (decl.prop === '--textColorWeak' && selector === `${rootTokenScope}.dark-mode`) labels.push(decl.value);
+        for (const state of ['.is_disabled', '[disabled]']) {
+          if (decl.prop === 'background-color' && selector === `${darkScope} .button--primary${state}`) {
+            backgrounds.set(state, decl.value);
+          }
+        }
+      }
+    }
+  });
+  if (!labels.length || backgrounds.size !== 2) throw new Error(`${flavor} missing disabled primary label/background`);
+  const ratios = labels.flatMap((label) => [...backgrounds.values()].map((background) => {
+    const a = luminance(parseColor(label, '--textColorWeak'));
+    const b = luminance(parseColor(background, 'disabled background-color'));
+    return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+  }));
+  const ratio = Math.min(...ratios);
+  if (ratio < 3) throw new Error(`${flavor} disabled primary contrast: ${ratio.toFixed(2)}:1 < 3:1`);
+  return `${flavor} disabled primary contrast: PASS (${ratio.toFixed(2)}:1 >= 3:1)`;
+}
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
@@ -181,13 +260,17 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       if (!count) throw new Error('Compiled output has no assignments');
       const ordering = checkNeutralOrder(css, flavor);
       checkOverrides(css);
+      checkErrorPageExclusion(css);
+      const contrast = checkDisabledContrast(css, flavor);
+      if (contrast) console.log(contrast);
       console.log(`${flavor}: PASS (${count} custom-property assignments)`);
       console.log(ordering);
     }
     const mixed = postcss.parse((await compile('latte', source, library, 'mocha', 'green')).css, { from: undefined, map: false });
     const palettes = {};
     mixed.walkDecls('--backgroundColorBase', (decl) => {
-      if (decl.parent.selector.includes('body')) return;
+      if (!selectorParser().astSync(decl.parent.selector).nodes.every((selector) =>
+        !selector.nodes.some((node) => node.type === 'combinator'))) return;
       palettes[decl.parent.selector.includes('.dark-mode') ? 'dark' : 'light'] = decl.value;
     });
     if (!palettes.light || !palettes.dark || palettes.light === palettes.dark) throw new Error('Flavor switching failed');
@@ -196,16 +279,4 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     console.error(error.message);
     process.exitCode = 1;
   }
-}
-
-export function checkOverrides(css) {
-  css.walkDecls((decl) => {
-    if (decl.prop.startsWith('--')) return;
-    const selectors = postcss.list.comma(decl.parent.selector);
-    if (!selectors.every((selector) => overrideAllowlist.some((entry) => entry.property === decl.prop &&
-        entry.value.test(decl.value) && (entry.important === undefined || entry.important === Boolean(decl.important)) &&
-        entry.selector.test(selector)))) {
-      throw new Error(`Unexpected color override: ${decl.parent.selector} / ${decl.prop}`);
-    }
-  });
 }
