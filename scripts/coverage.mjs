@@ -30,20 +30,19 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     const discovered = discoverCoverage(await loadStylesheets(process.argv.slice(2)));
     const extracted = { ...discovered, names: discoveredColorNames(discovered, { requireNu: true }) };
     const sets = coverageSets(extracted);
-    for (const [label, file, names] of [
-      ['Legacy', 'catppuccin.user.less', sets.legacy],
-      ['New design add-on', 'catppuccin-nu.user.less', sets.nu],
+    const source = await readFile(new URL('../catppuccin.user.less', import.meta.url), 'utf8');
+    for (const [label, names] of [
+      ['Legacy', sets.legacy],
+      ['New design', sets.nu],
     ]) {
-      const source = await readFile(new URL(`../${file}`, import.meta.url), 'utf8');
       const missing = missingAssignments(names, source);
       console.log(`${label}: ${names.length} assignable; ${missing.length} unassigned.`);
       for (const name of missing) console.error(name);
       if (missing.length) process.exitCode = 1;
     }
-    const addon = await readFile(new URL('../catppuccin-nu.user.less', import.meta.url), 'utf8');
     const library = await download(libraryURL);
     for (const flavor of ['latte', 'frappe', 'macchiato', 'mocha']) {
-      console.log(`${flavor}: ${checkNuTokenTypes(postcss.parse((await compile(flavor, addon, library)).css), discovered)}`);
+      console.log(`${flavor}: ${checkNuTokenTypes(postcss.parse((await compile(flavor, source, library)).css), discovered)}`);
     }
     if (!process.exitCode) console.log('Live coverage and type parity: PASS');
     console.log(`Excluded legacy composites: ${extracted.composites.filter((name) => !name.startsWith('--nuui-')).join(', ')}`);

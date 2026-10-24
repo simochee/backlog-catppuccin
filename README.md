@@ -24,12 +24,8 @@ An internet connection is needed to resolve the standard library during compilat
 
 ## Backlog's new design
 
-For Backlog's opt-in new design, install both `catppuccin.user.less` and the
-[new design add-on](https://github.com/simochee/backlog-catppuccin/raw/main/catppuccin-nu.user.less).
-The add-on requires the main style: it maps the new `--nuui-*` tokens while the
-main style supplies the shared legacy tokens and tooltips. Choose the same
-flavors and accent in both styles. The add-on activates automatically when a
-`styles_nu-ui/` stylesheet is linked directly from the page head.
+The style supports both Backlog designs automatically. New-design tokens activate
+when a `styles_nu-ui/` stylesheet is linked directly from the page head.
 
 ## Development
 
@@ -53,8 +49,8 @@ tokens are discovered):
 npm run check:coverage
 ```
 
-Compile both files in all four flavors and check RGB triplets, independent
-appearance switching, surface ordering, tooltip contrast, and add-on content/surface
+Compile the userstyle in all four flavors and check RGB triplets, independent
+appearance switching, surface ordering, tooltip contrast, and new-design content/surface
 contrast. The floor is 3:1 except for Latte solid role surfaces, which have a
 2.5:1 floor; each pair below 3:1 is listed in the output. Default tooltips retain
 3:1 in every flavor. The Latte success tooltip uses the solid-surface exception
@@ -137,9 +133,9 @@ Downloads stay in memory. Neither downloaded CSS/HTML nor original variable
 values are written to disk by these scripts. Extraction stdout contains names
 only; source diagnostics and exclusions go to stderr. The compile check uses a SHA-256 pinned, MIT-attributed copy of the public
 Catppuccin standard library in `test/fixtures/` and makes no network requests.
-It runs both files sequentially through all 15 accents, four flavors, and both
+It runs the userstyle sequentially through all 15 accents, four flavors, and both
 Latte/Mocha mixed directions. Guard structure, main overrides and RGB aliases,
-neutral states, contrast, add-on token types, and CIE76 palette distance are checked;
+neutral states, contrast, new-design token types, and CIE76 palette distance are checked;
 failures are collected before exit. Palette summaries count literal occurrences
 as exact, within ΔE 12, or explicitly allowlisted with a reason. Alpha colors are
 compared by their unpremultiplied hue, while contrast composites them over the
@@ -149,7 +145,13 @@ hosting base. The type manifest contains public token names only.
 defines the pane, surface, text, cursor, selection, syntax and diff roles. Neutral
 steps replace project tints that also paint fixed or overlapping surfaces. Other
 tints use palette alpha. Colored ink uses pure hues, with minimum 0.1% Latte HSL
-corrections capped at 20% where needed for the 3:1 floor. Exact-color exceptions
+corrections capped at 20% where needed for the 3:1 floor. File-path headers use
+mantle; separator ink uses surface0. Line numbers use subtext0 on surface0 and
+alternate mantle rows. Inputs use surface0 in dark flavors and mantle in Latte,
+with a base page in every flavor. Marker tints use 14% subtle, 24% Latte
+default/shape, and 30% highlight (26% in Frappé to retain 3:1); dark default/shape
+markers retain solid palette hues. Marker borders use 16% subtle and 30% default.
+Exact-color exceptions
 in `scripts/style-policy.mjs` document the corrections exceeding ΔE 12. Primary
 hover/active colors change lightness by 2%/4%; disabled neutral surfaces use 3%
 to distinguish them from every ghost state; Frappé pressed uses a 2% surface2
@@ -161,8 +163,8 @@ to avoid large palette overcorrections.
 Color literals, named colors, color functions, RGB triplets, and references to
 known color tokens are recognized. Numbers and dimensions are excluded. Composite
 shadows and gradients in the legacy set are reported separately and left
-unchanged in Phase 1. Coverage reports legacy and add-on assignments separately;
-the add-on includes color-bearing AI and elevation composites. Non-color tokens
+unchanged in Phase 1. Coverage reports legacy and new-design assignments separately;
+the new design includes color-bearing AI and elevation composites. Non-color tokens
 (such as dimensions and opacity) are left untouched. Passing coverage does
 not mean every visible color is themed: direct colors, runtime styles, and CSS
 only linked on authenticated pages remain for the human's Stylus check.

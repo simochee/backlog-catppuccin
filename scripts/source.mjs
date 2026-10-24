@@ -119,9 +119,10 @@ export async function extract(extraURLs = []) {
 }
 
 export function discoveredColorNames({ names, composites }, { requireNu = false } = {}) {
-  const missing = !names.length ? '' : requireNu &&
-    ![...names, ...composites].some((name) => name.startsWith('--nuui-')) ? '--nuui-* ' : null;
-  if (missing !== null) throw new Error(`No ${missing}color variables discovered`);
+  if (!names.length) throw new Error('No color variables discovered');
+  if (requireNu && ![...names, ...composites].some((name) => name.startsWith('--nuui-'))) {
+    throw new Error('No --nuui-* color variables discovered');
+  }
   const excluded = new Set(composites);
   return names.filter((name) => !excluded.has(name));
 }

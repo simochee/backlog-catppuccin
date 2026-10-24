@@ -3,11 +3,11 @@
     "direction": "descending",
     "order": [
       [
-        "--backgroundColorSchemeBase",
         "--backgroundColorDefault",
         "--backgroundColorBase"
       ],
       [
+        "--backgroundColorSchemeBase",
         "--backgroundColorWeakOnBaseBG",
         "--backgroundColorWeak"
       ],
@@ -43,6 +43,10 @@
       [
         "--backgroundColorHighlightUpdate",
         "--borderColorDefault"
+      ],
+      [
+        "--backgroundColorDefault",
+        "--backgroundColorSchemeBase"
       ]
     ]
   },
@@ -54,11 +58,11 @@
         "--backgroundColorWeak"
       ],
       [
-        "--backgroundColorSchemeBase",
         "--backgroundColorDefault",
         "--backgroundColorBase"
       ],
       [
+        "--backgroundColorSchemeBase",
         "--backgroundColorDisabled",
         "--backgroundColorDsabled",
         "--backgroundColorUpdate",
@@ -70,6 +74,11 @@
         "--backgroundColorUpdateHover"
       ]
     ],
-    "distinct": []
+    "distinct": [
+      [
+        "--backgroundColorDefault",
+        "--backgroundColorSchemeBase"
+      ]
+    ]
   }
 }

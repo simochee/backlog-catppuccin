@@ -14,7 +14,7 @@ const library = `#lib() { .palette() {
   @overlay0: #444444; @overlay1: #555555; @overlay2: #666666; @rosewater: #bb8888;
   @accent: #8833aa; @mauve: @accent; @sapphire: @accent; @teal: @accent;
   @green: @accent; @blue: @accent; @red: @accent; @peach: @accent;
-  @yellow: @accent; @pink: @accent; @flamingo: @accent;
+  @yellow: @accent; @pink: @accent; @flamingo: @accent; @maroon: @accent; @sky: @accent; @lavender: @accent;
 } }`;
 const scope = legacyOverrideScope;
 const flavoredScopes = ['', '.dark-mode'].flatMap((mode) =>

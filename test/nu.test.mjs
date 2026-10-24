@@ -5,36 +5,35 @@ import postcss from 'postcss';
 import selectorParser from 'postcss-selector-parser';
 import { selectorSpecificity, compare } from '@csstools/selector-specificity';
 import { errorPageGuard, legacyGuard, newDesignGuard, sharedTokenScope, legacyOverrideScope, newDesignTokenScope } from '../scripts/guards.mjs';
-import { checkErrorPageExclusion, checkNuStyle, nuContrastPairs, nuDistinctSurfaces, checkTooltipContrast } from '../scripts/compile.mjs';
+import { checkErrorPageExclusion, checkNuStyle, nuContrastPairs, nuDistinctSurfaces, checkTooltipContrast, markerNames } from '../scripts/compile.mjs';
 import { coverageSets, missingAssignments, discoverCoverage } from '../scripts/coverage.mjs';
 import { inspectCSS } from '../scripts/source.mjs';
 import { findLiterals } from '../scripts/literals.mjs';
 
-const source = await readFile(new URL('../catppuccin-nu.user.less', import.meta.url), 'utf8');
+const source = await readFile(new URL('../catppuccin.user.less', import.meta.url), 'utf8');
 const main = await readFile(new URL('../catppuccin.user.less', import.meta.url), 'utf8');
 
-test('add-on has an independent identity, identical controls/domains and no legacy assignments', () => {
-  assert.notEqual(source.match(/^@name .+$/m)[0], main.match(/^@name .+$/m)[0]);
-  assert.match(source, /@description .*requires Backlog Catppuccin/);
-  assert.deepEqual(source.match(/^@var .+$/gm), main.match(/^@var .+$/gm));
-  assert.equal(source.match(/^@-moz-document .+$/m)[0], main.match(/^@-moz-document .+$/m)[0]);
+test('userstyle has one header, control set and document scope', () => {
+  assert.equal((source.match(/==UserStyle==/g) || []).length, 1);
+  assert.equal((source.match(/^@var /gm) || []).length, 3);
+  assert.equal((source.match(/^@-moz-document /gm) || []).length, 1);
   const assigned = [...source.slice(source.lastIndexOf('#nuui(@flavor) {')).matchAll(/(--[\w-]+):/g)].map((match) => match[1]);
   assert.ok(assigned.length > 200);
   assert.ok(assigned.every((name) => name.startsWith('--nuui-')));
   assert.equal(new Set(assigned).size, assigned.length);
 });
 
-test('coverage keeps add-on colors and composites separate from legacy and non-color tokens', () => {
+test('coverage keeps new design colors and composites separate from legacy and non-color tokens', () => {
   const extracted = inspectCSS(':root { --legacy: red; --nuui-text-default: blue; --nuui-elevation-shadow-small: 0 2px 4px red; --nuui-bg-ai-default: linear-gradient(red, blue); --nuui-radius: 4px; --nuui-opacity: .5; }');
   const sets = coverageSets({ names: extracted.names.filter((name) => !extracted.composites.includes(name)), composites: extracted.composites });
   assert.deepEqual(sets.legacy, ['--legacy']);
   assert.deepEqual(sets.nu, ['--nuui-bg-ai-default', '--nuui-elevation-shadow-small', '--nuui-text-default']);
   assert.deepEqual(missingAssignments(sets.nu, source), []);
-  assert.deepEqual(missingAssignments(sets.nu, main), sets.nu);
+  assert.deepEqual(missingAssignments(sets.nu, main), []);
   assert.deepEqual(missingAssignments(sets.nu, '--nuui-text-default: @text;'), ['--nuui-bg-ai-default', '--nuui-elevation-shadow-small']);
 });
 
-test('structural guard check distinguishes token roots, tooltips, components and add-on', () => {
+test('structural guard check distinguishes token roots, tooltips, components and new design', () => {
   for (const selector of [sharedTokenScope, `${sharedTokenScope}.dark-mode body`, `${sharedTokenScope} .simptip-info`]) {
     assert.doesNotThrow(() => checkErrorPageExclusion(postcss.parse(`${selector} {--tooltipBaseColor:red}`)));
   }
@@ -51,7 +50,7 @@ test('structural guard check distinguishes token roots, tooltips, components and
   assert.doesNotThrow(() => checkErrorPageExclusion(postcss.parse(`${newDesignTokenScope}.dark-mode body {--nuui-text-default:red}`), true));
 });
 
-test('design guards add zero specificity and add-on body beats site theme declarations', () => {
+test('design guards add zero specificity and new design body beats site theme declarations', () => {
   const specificity = (selector) => selectorSpecificity(selectorParser().astSync(selector).first);
   for (const guard of [errorPageGuard, legacyGuard, newDesignGuard]) assert.deepEqual(specificity(`:root${guard}`), specificity(':root'));
   assert.ok(compare(specificity(`${newDesignTokenScope}.dark-mode body`), specificity('.dark-mode body.theme-green:not(.Page--error, .Page--add-space)')) > 0);
@@ -68,11 +67,19 @@ function validNu() {
   entries.set('bg-subtle', '#fff');
   entries.set('bg-row-header', '#fff');
   entries.set('bg-disabled', '#ddd');
+  for (const role of ['danger', 'info', 'success', 'warning', ...markerNames.map((name) => `marker-${name}`)]) {
+    entries.set(`bg-${role}-subtle`, '#eee');
+    entries.set(`bg-${role}-highlight`, '#ddd');
+  }
+  for (const name of markerNames) {
+    entries.set(`border-marker-${name}-subtle`, '#888');
+    entries.set(`border-marker-${name}-default`, '#aaa');
+  }
   const declarations = [...entries].map(([name, value]) => `--nuui-${name}:${value}`).join(';');
   return postcss.parse(['', ' body', '.dark-mode', '.dark-mode body'].map((mode) => `${newDesignTokenScope}${mode} {${declarations}}`).join('\n'));
 }
 
-test('add-on checks reject unreadable semantic, marker and navigation pairs and flattened states', () => {
+test('new design checks reject unreadable semantic, marker and navigation pairs and flattened states', () => {
   assert.match(checkNuStyle(validNu(), 'latte'), /PASS/);
   for (const token of ['text-on-primary', 'icon-on-warning', 'text-on-marker-default', 'text-on-theme-nav', 'text-danger']) {
     const css = validNu();
@@ -111,10 +118,11 @@ test('image/color type parity follows discovered gradients and aliases in both d
 
 test('guarded navigation and migration rules use only approved role tokens', async () => {
   const { compile, nuComponentTokens } = await import('../scripts/compile.mjs');
-  const palette = ['rosewater', 'flamingo', 'pink', 'mauve', 'red', 'maroon', 'peach', 'yellow', 'green', 'teal', 'blue', 'sapphire', 'sky', 'lavender', 'subtext0', 'subtext1', 'overlay0', 'overlay1', 'surface0', 'surface1', 'surface2', 'mantle', 'base', 'crust', 'text', 'accent'];
+  const palette = ['rosewater', 'flamingo', 'pink', 'mauve', 'red', 'maroon', 'peach', 'yellow', 'green', 'teal', 'blue', 'sapphire', 'sky', 'lavender', 'subtext0', 'subtext1', 'overlay0', 'overlay1', 'overlay2', 'surface0', 'surface1', 'surface2', 'mantle', 'base', 'crust', 'text', 'accent'];
   const shades = {base: '#eeeeee', mantle: '#dddddd', crust: '#cccccc', text: '#111111', accent: '#aa4444'};
   const library = `#lib { .palette() {${palette.map((name) => `@${name}: ${shades[name] || '#888888'};`).join('')}} }`;
   const css = postcss.parse((await compile('latte', source, library, 'mocha')).css);
+  css.walkRules((rule) => { if (!rule.selector.startsWith(newDesignTokenScope)) rule.remove(); });
   assert.doesNotThrow(() => checkErrorPageExclusion(css, true));
   let roots = 0;
   css.walkRules((rule) => {
@@ -171,7 +179,7 @@ test('live coverage and type parity fail when discovery or assignments are empty
   assert.throws(() => checkNuTokenTypes(postcss.parse(''), inspectCSS(':root {--nuui-text:red}')), /No --nuui-.*assignments/);
 });
 
-test('each userstyle declares the same new-design marker once', async () => {
+test('the userstyle declares the same new-design marker once', async () => {
   const { newDesignMarker } = await import('../scripts/guards.mjs');
   for (const style of [source, main]) {
     assert.equal(style.match(/@newDesignMarker: ~'([^']+)';/)[1], newDesignMarker);
