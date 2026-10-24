@@ -7,6 +7,25 @@ import expectedOrder from '../test/fixtures/neutral-order.json' with { type: 'js
 
 export const libraryURL = 'https://userstyles.catppuccin.com/lib/std/v1.less';
 const isRGB = (name) => /-rgb$/.test(name) || name === '--rgb-accent';
+const sidebarProperties = new Map([
+  ['.project-nav__back', ['background-color']],
+  ['.project-nav-list__link', ['color']],
+  ['.project-nav-list__icon.icon', ['color', 'fill']],
+  ['.project-nav-list__text', ['color']],
+  ['.project-nav-list__link:is(.is_active, :hover, :focus)', ['color', 'background-color']],
+  ['.project-nav-list__link:is(.is_active, :hover, :focus) .project-nav-list__text', ['color']],
+  ['.project-nav-list__link#navi-document .project-nav-list__beta', ['color', 'outline-color', 'background-color']],
+  ['.project-nav-list__link#navi-document:is(.is_active, :hover, :focus) .project-nav-list__beta', ['color', 'outline-color', 'background-color']],
+  ['.project-nav-ai-pr', ['color', 'background-color']],
+  ['.project-nav-ai-pr__open-new-tab-icon.icon', ['color']],
+  ['.project-nav-ai-pr__icon.icon', ['fill']],
+  ['.project-nav-ai-pr:is(:hover, :focus)', ['color', 'background']],
+  ['.project-nav-ai-pr:is(:hover, :focus) .project-nav-ai-pr__icon.icon', ['background-color']],
+  ['.trigger-icon .trigger-icon__inner .trigger-icon__line', ['background-color']],
+  ['.trigger-icon .trigger-icon__inner::before', ['background-color']],
+  ['.trigger-icon .trigger-icon__inner::after', ['background-color']],
+]);
+
 export async function compile(flavor, source, library, darkFlavor = flavor, accentColor = 'mauve') {
   const importLine = `@import "${libraryURL}";`;
   if (!source.includes(importLine)) throw new Error('Catppuccin library @import line not found');
@@ -91,6 +110,11 @@ const overrideAllowlist = [
   { selector: /^:root:not\(\.dark-mode\) body\.Page--view-kanban \.card$/, property: 'background-color', value: /^var\(--backgroundColorSchemeBase\)$/ },
   { selector: new RegExp(`^${flavoredScope}\\.upgrade-bar\\.generic-cta-bar$`), property: 'background-image', value: new RegExp(`^linear-gradient\\(45deg, ${color}, ${color}\\)$`, 'i') },
   { selector: new RegExp(`^${flavoredScope}\\.na-choice-box\\.is_active$`), property: 'border-color', value: new RegExp(`^${color}$`, 'i') },
+  ...[...sidebarProperties].flatMap(([selector, properties]) => properties.map((property) => ({
+    selector: new RegExp(`^${flavoredScope}${selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`),
+    property,
+    value: new RegExp(`^${color}$`, 'i'),
+  }))),
 ];
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
@@ -129,9 +153,9 @@ export function checkOverrides(css) {
   css.walkDecls((decl) => {
     if (decl.prop.startsWith('--')) return;
     const selectors = postcss.list.comma(decl.parent.selector);
-    if (!overrideAllowlist.some((entry) => entry.property === decl.prop && entry.value.test(decl.value) &&
-        (entry.important === undefined || entry.important === Boolean(decl.important)) &&
-        selectors.every((selector) => entry.selector.test(selector)))) {
+    if (!selectors.every((selector) => overrideAllowlist.some((entry) => entry.property === decl.prop &&
+        entry.value.test(decl.value) && (entry.important === undefined || entry.important === Boolean(decl.important)) &&
+        entry.selector.test(selector)))) {
       throw new Error(`Unexpected color override: ${decl.parent.selector} / ${decl.prop}`);
     }
   });

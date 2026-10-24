@@ -102,8 +102,6 @@
     .dark-mode .project-list__item:hover .project-launch-menu__text,
     .dark-mode .project-list__item:hover .project-list__key,
     .dark-mode .project-list__item:hover .project-list__name,
-    .dark-mode .project-nav-list__icon.icon,
-    .dark-mode .project-nav-list__text,
     .dark-mode .slide-in__title,
     .dark-mode .status,
     .dark-mode .status-label,
@@ -129,8 +127,7 @@
     .dark-mode .pill--issue-type-6,
     .dark-mode .pill--issue-type-7,
     .dark-mode .pill--issue-type-8,
-    .dark-mode .pill--issue-type-9,
-    .dark-mode .project-nav-list__link#navi-document .project-nav-list__beta {
+    .dark-mode .pill--issue-type-9 {
       color: var(--backgroundColorSchemeBase) !important;
     }
     // END GENERATED DARK TEXT
@@ -177,6 +174,7 @@
       // Latte runs light to dark, opposite to Backlog's dark tokens.
       @surfaceInput: @base;
       @surfacePage: @mantle;
+      @surfaceSidebar: @crust;
       @surfaceWeak: @mantle;
       @surfaceDisabled: @crust;
       @surfaceHover: @surface0;
@@ -188,6 +186,7 @@
     .surfaces() when not (@flavor = latte) {
       @surfaceInput: @crust;
       @surfacePage: @base;
+      @surfaceSidebar: @mantle;
       @surfaceWeak: @mantle;
       @surfaceDisabled: @surface0;
       @surfaceHover: @surface1;
@@ -197,6 +196,59 @@
       @surfaceHighlight: @surface0;
     }
     .surfaces();
+
+    .project-nav__back {
+      background-color: @surfaceSidebar;
+    }
+    .project-nav-list__link {
+      color: @accent;
+    }
+    .project-nav-list__icon.icon {
+      fill: @accent !important;
+      color: @accent !important;
+    }
+    .project-nav-list__text {
+      color: @subtext1;
+    }
+    .project-nav-list__link:is(.is_active, :hover, :focus) {
+      color: @accent;
+      background-color: @surface0;
+      .project-nav-list__text {
+        color: @accent;
+      }
+    }
+    .project-nav-list__link#navi-document .project-nav-list__beta {
+      color: @subtext1 !important;
+      outline-color: @subtext1 !important;
+      background-color: @surface0;
+    }
+    .project-nav-list__link#navi-document:is(.is_active, :hover, :focus) .project-nav-list__beta {
+      color: @accent !important;
+      outline-color: @accent !important;
+      background-color: @surface1;
+    }
+    .project-nav-ai-pr {
+      color: @subtext1;
+      background-color: @surfaceSidebar;
+    }
+    .project-nav-ai-pr__open-new-tab-icon.icon {
+      color: @accent;
+    }
+    .project-nav-ai-pr__icon.icon {
+      fill: @accent;
+    }
+    .project-nav-ai-pr:is(:hover, :focus) {
+      color: @accent;
+      background: @surface0;
+      .project-nav-ai-pr__icon.icon {
+        background-color: @surface0;
+      }
+    }
+    .trigger-icon .trigger-icon__inner .trigger-icon__line,
+    .trigger-icon .trigger-icon__inner::before,
+    .trigger-icon .trigger-icon__inner::after {
+      background-color: @subtext1;
+    }
 
     --aiColor: @mauve;
     --aiColorHover: @mauve;
