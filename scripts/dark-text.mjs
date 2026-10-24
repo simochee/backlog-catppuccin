@@ -11,6 +11,15 @@ const baseColor = /^var\(\s*--backgroundColorSchemeBase\s*\)$/;
 const primaryColor = /^var\(\s*--textColorPrimary\s*\)$/;
 const accentColor = /^var\(\s*--(?:defaultColor(?:Main|Accent)|statusColor-[\w-]+|commonColor[\w-]+|[\w-]+ScaleAccent|[\w-]+ActionColor|brandColor[\w-]+)\s*\)$/;
 
+function normalizeSelector(selector) {
+  try {
+    return selectorParser().processSync(selector, { lossless: false });
+  } catch {
+    // Unsupported syntax must not make the advisory conflict report fatal.
+    return selector;
+  }
+}
+
 export function findDarkText(stylesheets) {
   const records = new Map();
   const nonDarkColors = new Set();
@@ -21,7 +30,8 @@ export function findDarkText(stylesheets) {
         if (parent.type !== 'atrule') return; // Nested selectors need expansion first.
         context.unshift([parent.name, parent.params]);
       }
-      for (const original of postcss.list.comma(rule.selector)) {
+      for (const input of postcss.list.comma(rule.selector)) {
+        const original = normalizeSelector(input);
         const dark = /^\.dark-mode\s+/.test(original);
         const selector = dark ? original.replace(/^\.dark-mode\s+/, '') : original;
         if (selector.includes('.dark-mode')) continue;
@@ -37,9 +47,10 @@ export function findDarkText(stylesheets) {
           }
           if (decl.prop === 'color' && !dark) nonDarkColors.add(original);
           if (decl.prop === 'color' && !dark) record.scaleText ||= value.match(/^var\(\s*(--[\w-]+)ScaleText\s*\)$/)?.[1];
-          if (decl.prop === 'background-color' && accentColor.test(value)) {
+          if ((decl.prop === 'background-color' && accentColor.test(value)) ||
+              (decl.prop === 'background' && [...value.matchAll(/var\([^()]*\)/g)].some(([reference]) => accentColor.test(reference)))) {
             record.accent = true;
-            record.scaleAccent ||= value.match(/^var\(\s*(--[\w-]+)ScaleAccent\s*\)$/)?.[1];
+            record.scaleAccent ||= value.match(/var\(\s*(--[\w-]+)ScaleAccent\s*\)/)?.[1];
           }
         }
         records.set(key, record);
@@ -48,9 +59,9 @@ export function findDarkText(stylesheets) {
   }
   const a = new Set();
   const b = new Set();
-  for (const { selector, lightBase, darkPrimary, accent } of records.values()) {
-    if (lightBase && darkPrimary) a.add(selector);
-    else if (darkPrimary && accent) b.add(selector);
+  for (const [key, { lightBase, darkPrimary, accent }] of records) {
+    if (lightBase && darkPrimary) a.add(key);
+    else if (darkPrimary && accent) b.add(key);
   }
   // Titles explicitly reset their text color while sharing the card's surface.
   // Require an exact parent selector and matching scale tokens, not any ancestor.
@@ -59,38 +70,47 @@ export function findDarkText(stylesheets) {
     const [context] = JSON.parse(key);
     const parentSelector = record.selector.slice(0, -' .title'.length);
     const parent = records.get(JSON.stringify([context, parentSelector]));
-    if (parent?.darkPrimary && parent.accent && !parent.lightBase && parent.scaleAccent === record.scaleText) b.add(record.selector);
+    if (parent?.darkPrimary && parent.accent && !parent.lightBase && parent.scaleAccent === record.scaleText) b.add(key);
   }
-  const overrides = [...records.values()]
-    .filter(({ selector }) => a.has(selector) || b.has(selector))
-    .flatMap(({ context, darkRules }) => [...darkRules].map(([selector, important]) => ({ selector, important, context })))
+  const overrides = [...records]
+    .filter(([key]) => a.has(key) || b.has(key))
+    .flatMap(([, { context, darkRules }]) => [...darkRules].map(([selector, important]) => ({ selector, important, context })))
     .sort((x, y) => JSON.stringify(x).localeCompare(JSON.stringify(y)));
   const metadata = new Map();
   const inspect = (selector) => {
     if (!metadata.has(selector)) {
-      const ast = selectorParser().astSync(selector);
-      const blocks = new Set();
-      // Conservative BEM overlap includes descendants; state/modifier classes
-      // alone do not identify a component block.
-      ast.walkClasses(({ value }) => {
-        if (!/^(?:-|is_|has_)/.test(value) && value !== 'dark-mode') blocks.add(value.split(/__|--/)[0]);
-      });
-      metadata.set(selector, { blocks, specificity: selectorSpecificity(ast) });
+      try {
+        const ast = selectorParser().astSync(selector);
+        const blocks = new Set();
+        // Conservative BEM overlap includes descendants; state/modifier classes
+        // alone do not identify a component block.
+        ast.walkClasses(({ value }) => {
+          if (!/^(?:-|is_|has_)/.test(value) && value !== 'dark-mode') blocks.add(value.split(/__|--/)[0]);
+        });
+        metadata.set(selector, { blocks, blockList: [...blocks], specificity: selectorSpecificity(ast) });
+      } catch (error) {
+        console.error(`Warning: skipped selector in conflict report: ${selector}: ${error.message}`);
+        metadata.set(selector, null);
+      }
     }
     return metadata.get(selector);
   };
+  const candidates = [...nonDarkColors].sort().map((selector) => ({ selector, inspection: inspect(selector) }))
+    .filter(({ inspection }) => inspection);
+  const generatedSelectors = overrides.map(({ selector }) => ({ selector, inspection: inspect(selector) }))
+    .filter(({ inspection }) => inspection);
   const conflicts = [];
-  for (const { selector } of overrides) {
-    const generated = inspect(selector);
-    for (const candidate of [...nonDarkColors].sort()) {
-      const other = inspect(candidate);
+  for (const { selector, inspection: generated } of generatedSelectors) {
+    for (const { selector: candidate, inspection: other } of candidates) {
       if (compare(other.specificity, generated.specificity) >= 0 &&
-          [...other.blocks].some((block) => generated.blocks.has(block))) {
+          other.blockList.some((block) => generated.blocks.has(block))) {
         conflicts.push({ generated: selector, selector: candidate });
       }
     }
   }
-  return { a: [...a].sort(), b: [...b].filter((selector) => !a.has(selector)).sort(), overrides, conflicts };
+  const selectors = (keys) => [...new Set([...keys].map((key) => records.get(key).selector))].sort();
+  const aSelectors = selectors(a);
+  return { a: aSelectors, b: selectors(b).filter((selector) => !aSelectors.includes(selector)), overrides, conflicts };
 }
 
 export function renderDarkText({ overrides }) {

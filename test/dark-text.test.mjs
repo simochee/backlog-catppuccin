@@ -47,7 +47,7 @@ test('near misses do not pair selectors, properties, modes, tokens or conditiona
     .dark-mode .surface {${primary}; background-color:var(--backgroundColorBase)}
     .dark-mode .suffix {${primary}; background-color:var(--defaultColorMainInverse)}
     .dark-mode .function {${primary}; background-color:rgb(var(--commonColorGreen-rgb))}
-    .dark-mode .shorthand {${primary}; background:var(--defaultColorAccent)}
+    .dark-mode .shorthand {${primary}; background:var(--backgroundColorBase)}
     .dark-mode .nested-dark .dark-mode .item {${primary}; background-color:var(--defaultColorAccent)}
     @media (min-width:1px) {.media {color:var(--backgroundColorSchemeBase)}}
     @media (min-width:2px) {.dark-mode .media {${primary}}}
@@ -57,7 +57,7 @@ test('near misses do not pair selectors, properties, modes, tokens or conditiona
 
 test('same conditional context matches and selector commas within functions remain intact', () => {
   const result = patterns([`@media (min-width:1px) { .pill:is(:hover, :focus) {color:var(--backgroundColorSchemeBase)} .dark-mode .pill:is(:hover, :focus) {${primary}} }`]);
-  assert.deepEqual(result.a, ['.pill:is(:hover, :focus)']);
+  assert.deepEqual(result.a, ['.pill:is(:hover,:focus)']);
   const full = findDarkText([`@media (min-width:1px) { .pill {color:var(--backgroundColorSchemeBase)} .dark-mode .pill {${primary}} }`]);
   assert.match(renderDarkText(full), /@media \(min-width:1px\) \{[\s\S]*\.dark-mode \.pill/);
 });
@@ -81,7 +81,6 @@ test('compiled override validation enforces dark-only text and light-only board 
   }
 });
 
-
 test('site state specificity keeps winning and only site important declarations stay important', () => {
   const site = `.project-nav-list__text, .pill {color:var(--backgroundColorSchemeBase)}
     .dark-mode  .project-nav-list__text {${primary}}
@@ -89,14 +88,13 @@ test('site state specificity keeps winning and only site important declarations 
     .dark-mode .pill {${primary} !important}`;
   const result = findDarkText([site]);
   const block = renderDarkText(result);
-  assert.match(block, /\.dark-mode  \.project-nav-list__text/);
+  assert.match(block, /\.dark-mode \.project-nav-list__text/);
   const rules = [];
   postcss.parse(block.replaceAll(/^[ \t]*\/\/.*$/gm, '')).walkRules((rule) => rules.push(rule));
   const normal = rules.find((rule) => rule.selector.includes('project-nav-list__text'));
   assert.equal(Boolean(normal.first.important), false);
   assert.ok(rules.find((rule) => rule.selector === '.dark-mode .pill').first.important);
   assert.ok(!block.includes(':root'));
-  // Calculate the cascade for the matching active/hover state, including source order.
   const matching = [];
   postcss.parse(`${site}\n${block.replaceAll(/^[ \t]*\/\/.*$/gm, '')}`).walkRules((rule) => {
     for (const selector of postcss.list.comma(rule.selector)) {
@@ -116,4 +114,39 @@ test('conflict report includes equal and greater BEM variants, excluding dark an
     .other.is_active {${primary}}
     .dark-mode .pill:hover {${primary}}`]);
   assert.deepEqual(result.conflicts.map(({selector}) => selector), ['#menu .pill__label', '.pill--square.-subtasking']);
+});
+
+test('override emission requires qualification in its own conditional context', () => {
+  const result = findDarkText([`.pill {color:var(--backgroundColorSchemeBase)}
+    .dark-mode .pill {${primary}}
+    @media print {.dark-mode .pill {${primary} !important}}
+    @supports (display:grid) {.dark-mode .pill {${primary};background:var(--defaultColorMain)}}`]);
+  assert.deepEqual(result.overrides.map(({ context }) => context), [[['supports', '(display:grid)']], []]);
+  assert.ok(!renderDarkText(result).includes('@media print'));
+});
+
+test('pairing and output normalize whitespace and combinators without altering attribute values', () => {
+  const result = findDarkText([`.list  > .item + .next ~ [title="two  words"] {color:var(--backgroundColorSchemeBase)}
+    .dark-mode   .list>.item+.next~[title="two  words"] {${primary}}`]);
+  assert.deepEqual(result.a, ['.list>.item+.next~[title="two  words"]']);
+  assert.equal(result.overrides[0].selector, '.dark-mode .list>.item+.next~[title="two  words"]');
+  checkOverrides(postcss.parse(renderDarkText(result).replaceAll(/^[ \t]*\/\/.*$/gm, '')));
+});
+
+test('accent background shorthands qualify including additional background components', () => {
+  const result = patterns([`.dark-mode .shorthand {${primary}; background:var(--defaultColorAccent)}
+    .dark-mode .positioned {${primary}; background:var(--commonColorGreen) center / cover no-repeat}`]);
+  assert.deepEqual(result, { a: [], b: ['.positioned', '.shorthand'] });
+});
+
+test('unsupported selectors warn once and do not stop generation or advisory conflicts', (t) => {
+  const warnings = [];
+  t.mock.method(console, 'error', (message) => warnings.push(message));
+  const result = findDarkText([`.pill, .broken: {color:var(--backgroundColorSchemeBase)}
+    .dark-mode .pill, .dark-mode .broken: {${primary}}
+    #menu .pill__label {${primary}}`]);
+  assert.ok(renderDarkText(result).includes('.dark-mode .pill'));
+  assert.ok(result.conflicts.some(({ selector }) => selector === '#menu .pill__label'));
+  assert.equal(warnings.length, 2);
+  assert.ok(warnings.every((warning) => warning.includes('skipped selector in conflict report')));
 });
