@@ -16,6 +16,40 @@ export async function compile(flavor, source, library, darkFlavor = flavor, acce
   });
 }
 
+// Neutral surfaces only; accent/project backgrounds have their own ordering.
+export const neutralBackgrounds = [
+  '--backgroundColorSchemeBase', '--backgroundColorWeakOnBaseBG',
+  '--backgroundColorWeak', '--backgroundColorDefault', '--backgroundColorBase',
+  '--backgroundColorDisabled', '--backgroundColorDsabled', '--backgroundColorHover',
+  '--backgroundColorUpdate', '--backgroundColorPrimary', '--backgroundColorUpdateHover',
+  '--backgroundColorHighlightUpdate',
+];
+
+function lightness(value) {
+  const hex = value.trim().replace(/^#([\da-f])([\da-f])([\da-f])$/i, '#$1$1$2$2$3$3');
+  if (!/^#[\da-f]{6}$/i.test(hex)) throw new Error(`Invalid neutral color: ${value}`);
+  const channels = hex.slice(1).match(/../g).map((channel) => parseInt(channel, 16));
+  return (Math.max(...channels) + Math.min(...channels)) / 510;
+}
+
+export function checkLatteDepth(css) {
+  let checked = 0;
+  css.walkRules((rule) => {
+    const values = new Map(rule.nodes.filter((node) => node.type === 'decl')
+      .map((decl) => [decl.prop, decl.value]));
+    if (!values.has('--backgroundColorSchemeBase')) return;
+    const levels = neutralBackgrounds.map((name) => {
+      if (!values.has(name)) throw new Error(`Missing neutral background: ${name}`);
+      return lightness(values.get(name));
+    });
+    if (levels.some((level) => level > levels[0]) || !levels.some((level) => level < levels[0])) {
+      throw new Error(`Latte SchemeBase must be the lightest neutral background: ${rule.selector}`);
+    }
+    checked++;
+  });
+  if (!checked) throw new Error('No Latte neutral backgrounds found');
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
     const source = await readFile(new URL('../catppuccin.user.less', import.meta.url), 'utf8');
@@ -41,6 +75,10 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
         }
       });
       if (!count) throw new Error('Compiled output has no assignments');
+      if (flavor === 'latte') {
+        checkLatteDepth(css);
+        console.log('Latte neutral depth: PASS (SchemeBase is lightest)');
+      }
       console.log(`${flavor}: PASS (${count} custom-property assignments)`);
     }
     const mixed = postcss.parse((await compile('latte', source, library, 'mocha', 'green')).css, { from: undefined, map: false });

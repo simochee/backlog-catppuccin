@@ -6,7 +6,8 @@ import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { promisify } from 'node:util';
 import { execFile } from 'node:child_process';
-import { compile } from '../scripts/compile.mjs';
+import postcss from 'postcss';
+import { compile, checkLatteDepth, neutralBackgrounds } from '../scripts/compile.mjs';
 import { blockStart, blockEnd } from '../scripts/dark-text.mjs';
 
 const importLine = '@import "https://userstyles.catppuccin.com/lib/std/v1.less";';
@@ -27,8 +28,9 @@ test('CLI checks execute from a path containing spaces and URL-encoded character
   }
   await symlink(fileURLToPath(new URL('../node_modules', import.meta.url)), join(directory, 'node_modules'), 'dir');
   await writeFile(join(directory, 'catppuccin.user.less'), `${importLine}
-    :root { --backgroundColorBase: if((@lightFlavor = latte), red, blue); }
-    :root.dark-mode { --backgroundColorBase: if((@darkFlavor = latte), red, blue); }`);
+    :root { ${neutralBackgrounds.map((name) => `${name}: ${name === '--backgroundColorSchemeBase' ? '#fff' : '#eee'};`).join(' ')}
+      --backgroundColorBase: if((@lightFlavor = latte), #eee, #222); }
+    :root.dark-mode { --backgroundColorBase: if((@darkFlavor = latte), #eee, #222); }`);
   await writeFile(join(directory, 'mock-fetch.mjs'), `globalThis.fetch = async (url) => new Response(
     String(url).endsWith('.less') ? '/* fixture library */' :
     String(url).endsWith('.css') ? ':root { --backgroundColorBase: red; }' :
@@ -52,4 +54,15 @@ test('CLI checks execute from a path containing spaces and URL-encoded character
   await run(process.execPath, args);
   const { stdout } = await run(process.execPath, [...args, '--check']);
   assert.match(stdout, /Pattern A \(1\):\n.pill[\s\S]*up to date/);
+});
+
+test('Latte depth check rejects inverted, flat, missing and incomplete neutral surfaces', () => {
+  const surfaces = (scheme, background) => postcss.parse(`:root {
+    ${neutralBackgrounds.map((name) => `${name}: ${name === '--backgroundColorSchemeBase' ? scheme : background};`).join(' ')}
+  }`);
+  assert.doesNotThrow(() => checkLatteDepth(surfaces('#fff', '#eeeeee')));
+  assert.throws(() => checkLatteDepth(surfaces('#ddd', '#eee')), /lightest neutral/);
+  assert.throws(() => checkLatteDepth(surfaces('#eee', '#eee')), /lightest neutral/);
+  assert.throws(() => checkLatteDepth(postcss.parse(':root {}')), /No Latte/);
+  assert.throws(() => checkLatteDepth(postcss.parse(':root { --backgroundColorSchemeBase: #fff }')), /Missing neutral/);
 });
