@@ -1,6 +1,8 @@
 import { pathToFileURL } from 'node:url';
 import { readFile, writeFile } from 'node:fs/promises';
 import postcss from 'postcss';
+import selectorParser from 'postcss-selector-parser';
+import { selectorSpecificity, compare } from '@csstools/selector-specificity';
 import { loadStylesheets } from './source.mjs';
 
 export const blockStart = '    // BEGIN GENERATED DARK TEXT (npm run generate:dark-text)';
@@ -11,6 +13,7 @@ const accentColor = /^var\(\s*--(?:defaultColor(?:Main|Accent)|statusColor-[\w-]
 
 export function findDarkText(stylesheets) {
   const records = new Map();
+  const nonDarkColors = new Set();
   for (const css of stylesheets) {
     postcss.parse(css, { from: undefined, map: false }).walkRules((rule) => {
       const context = [];
@@ -23,12 +26,16 @@ export function findDarkText(stylesheets) {
         const selector = dark ? original.replace(/^\.dark-mode\s+/, '') : original;
         if (selector.includes('.dark-mode')) continue;
         const key = JSON.stringify([context, selector]);
-        const record = records.get(key) || { selector };
+        const record = records.get(key) || { selector, context, darkRules: new Map() };
         for (const decl of rule.nodes) {
           if (decl.type !== 'decl') continue;
           const value = decl.value.trim();
           if (decl.prop === 'color' && !dark && baseColor.test(value)) record.lightBase = true;
-          if (decl.prop === 'color' && dark && primaryColor.test(value)) record.darkPrimary = true;
+          if (decl.prop === 'color' && dark && primaryColor.test(value)) {
+            record.darkPrimary = true;
+            record.darkRules.set(original, Boolean(decl.important) || record.darkRules.get(original) || false);
+          }
+          if (decl.prop === 'color' && !dark) nonDarkColors.add(original);
           if (decl.prop === 'color' && !dark) record.scaleText ||= value.match(/^var\(\s*(--[\w-]+)ScaleText\s*\)$/)?.[1];
           if (decl.prop === 'background-color' && accentColor.test(value)) {
             record.accent = true;
@@ -54,13 +61,53 @@ export function findDarkText(stylesheets) {
     const parent = records.get(JSON.stringify([context, parentSelector]));
     if (parent?.darkPrimary && parent.accent && !parent.lightBase && parent.scaleAccent === record.scaleText) b.add(record.selector);
   }
-  return { a: [...a].sort(), b: [...b].filter((selector) => !a.has(selector)).sort() };
+  const overrides = [...records.values()]
+    .filter(({ selector }) => a.has(selector) || b.has(selector))
+    .flatMap(({ context, darkRules }) => [...darkRules].map(([selector, important]) => ({ selector, important, context })))
+    .sort((x, y) => JSON.stringify(x).localeCompare(JSON.stringify(y)));
+  const metadata = new Map();
+  const inspect = (selector) => {
+    if (!metadata.has(selector)) {
+      const ast = selectorParser().astSync(selector);
+      const blocks = new Set();
+      // Conservative BEM overlap includes descendants; state/modifier classes
+      // alone do not identify a component block.
+      ast.walkClasses(({ value }) => {
+        if (!/^(?:-|is_|has_)/.test(value) && value !== 'dark-mode') blocks.add(value.split(/__|--/)[0]);
+      });
+      metadata.set(selector, { blocks, specificity: selectorSpecificity(ast) });
+    }
+    return metadata.get(selector);
+  };
+  const conflicts = [];
+  for (const { selector } of overrides) {
+    const generated = inspect(selector);
+    for (const candidate of [...nonDarkColors].sort()) {
+      const other = inspect(candidate);
+      if (compare(other.specificity, generated.specificity) >= 0 &&
+          [...other.blocks].some((block) => generated.blocks.has(block))) {
+        conflicts.push({ generated: selector, selector: candidate });
+      }
+    }
+  }
+  return { a: [...a].sort(), b: [...b].filter((selector) => !a.has(selector)).sort(), overrides, conflicts };
 }
 
-export function renderDarkText({ a, b }) {
-  const selectors = [...new Set([...a, ...b])].sort();
-  if (!selectors.length) throw new Error('No dark-text selectors discovered');
-  return `${blockStart}\n${selectors.map((selector, index) => `    ${selector}${index === selectors.length - 1 ? ' {' : ','}`).join('\n')}\n      color: var(--backgroundColorSchemeBase) !important;\n    }\n${blockEnd}`;
+export function renderDarkText({ overrides }) {
+  if (!overrides.length) throw new Error('No dark-text selectors discovered');
+  const groups = new Map();
+  for (const { selector, important, context } of overrides) {
+    const key = JSON.stringify([context, important]);
+    if (!groups.has(key)) groups.set(key, new Set());
+    groups.get(key).add(selector);
+  }
+  const rules = [...groups].map(([key, selectors]) => {
+    const [context, important] = JSON.parse(key);
+    let rule = `${[...selectors].sort().map((selector) => `    ${selector}`).join(',\n')} {\n      color: var(--backgroundColorSchemeBase)${important ? ' !important' : ''};\n    }`;
+    for (const [name, params] of [...context].reverse()) rule = `    @${name} ${params} {\n${rule}\n    }`;
+    return rule;
+  });
+  return `${blockStart}\n${rules.join('\n')}\n${blockEnd}`;
 }
 
 export function replaceDarkText(source, block) {
@@ -79,6 +126,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     const stylesheets = await loadStylesheets(extras);
     const result = findDarkText(stylesheets.map(({ css }) => css));
     for (const pattern of ['a', 'b']) console.log(`Pattern ${pattern.toUpperCase()} (${result[pattern].length}):\n${result[pattern].join('\n')}`);
+    console.log(`Potential non-dark color conflicts (${result.conflicts.length}; review only):`);
+    for (const conflict of result.conflicts) console.log(`${conflict.generated} <- ${conflict.selector}`);
     const file = new URL('../catppuccin.user.less', import.meta.url);
     const source = await readFile(file, 'utf8');
     const updated = replaceDarkText(source, renderDarkText(result));

@@ -42,7 +42,7 @@ test('CLI checks execute from a path containing spaces and URL-encoded character
     assert.match(stdout, expected);
   }
   const file = join(directory, 'catppuccin.user.less');
-  await writeFile(file, `:root:root:root:root:root.dark-mode {\n${blockStart}\n${blockEnd}\n}`);
+  await writeFile(file, `${blockStart}\n${blockEnd}`);
   await writeFile(join(directory, 'mock-dark-fetch.mjs'), `globalThis.fetch = async (url) => new Response(
     String(url).endsWith('.css') ? '.pill {color:var(--backgroundColorSchemeBase)} .dark-mode .pill {color:var(--textColorPrimary)}' :
     '<link rel="stylesheet" href="https://assets.backlog.com/fixture.css">');`);

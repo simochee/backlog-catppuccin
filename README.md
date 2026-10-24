@@ -61,6 +61,14 @@ npm run generate:dark-text
 npm run check:dark-text
 ```
 
+Generated text rules retain the site's dark selector specificity and declaration
+importance, so more specific states keep their colors. Generation and freshness
+checks also print non-dark color selectors with equal or greater specificity
+that share a BEM block. This conservative report includes ancestors, descendants
+and different conditional contexts; it does not prove that selectors overlap or
+cause a visible conflict and does not fail the check. Confirmed transparent
+subtask chips and migration-card links are restored separately by hand.
+
 The extractor discovers stylesheet URLs at runtime from the public error page
 at `https://simochee.backlog.com/this-page-does-not-exist`, then adds the Common,
 ReactApp, Kanban, Wiki, Git, Documents, React index and global-bar bundles from

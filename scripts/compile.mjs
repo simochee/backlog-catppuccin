@@ -62,11 +62,13 @@ export function checkOverrides(css) {
   css.walkDecls((decl) => {
     if (decl.prop.startsWith('--')) return;
     const selectors = postcss.list.comma(decl.parent.selector);
-    const darkText = decl.prop === 'color' && decl.important &&
-      selectors.every((selector) => selector.startsWith(':root:root:root:root:root.dark-mode '));
+    const darkText = decl.prop === 'color' &&
+      selectors.every((selector) => selector.startsWith('.dark-mode '));
+    const subtask = decl.prop === 'color' && !decl.important &&
+      decl.parent.selector === '.dark-mode .pill--square.-subtasking' && decl.value === 'var(--textColorWeak)';
     const board = decl.prop === 'background-color' &&
       selectors.length === 1 && selectors[0] === ':root:not(.dark-mode) body.Page--view-kanban .card';
-    if (decl.value !== 'var(--backgroundColorSchemeBase)' || !(darkText || board)) {
+    if (!subtask && (decl.value !== 'var(--backgroundColorSchemeBase)' || !(darkText || board))) {
       throw new Error(`Unexpected color override: ${decl.parent.selector} / ${decl.prop}`);
     }
   });
