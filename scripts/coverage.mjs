@@ -32,7 +32,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     const sets = coverageSets(extracted);
     for (const [label, file, names] of [
       ['Legacy', 'catppuccin.user.less', sets.legacy],
-      ['New design add-on', 'catppuccin-nu.user.less', sets.nu],
+      ['New design', 'catppuccin.user.less', sets.nu],
     ]) {
       const source = await readFile(new URL(`../${file}`, import.meta.url), 'utf8');
       const missing = missingAssignments(names, source);
@@ -40,7 +40,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       for (const name of missing) console.error(name);
       if (missing.length) process.exitCode = 1;
     }
-    const addon = await readFile(new URL('../catppuccin-nu.user.less', import.meta.url), 'utf8');
+    const addon = await readFile(new URL('../catppuccin.user.less', import.meta.url), 'utf8');
     const library = await download(libraryURL);
     for (const flavor of ['latte', 'frappe', 'macchiato', 'mocha']) {
       console.log(`${flavor}: ${checkNuTokenTypes(postcss.parse((await compile(flavor, addon, library)).css), discovered)}`);

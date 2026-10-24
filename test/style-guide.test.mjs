@@ -8,7 +8,7 @@ import { loadPinnedLibrary, loadPalettes } from '../scripts/palette.mjs';
 
 const library = await loadPinnedLibrary();
 const palettes = await loadPalettes();
-const sources = Object.fromEntries(await Promise.all(['catppuccin.user.less', 'catppuccin-nu.user.less'].map(async (file) => [file, await readFile(new URL(`../${file}`, import.meta.url), 'utf8')])));
+const sources = Object.fromEntries(await Promise.all(['catppuccin.user.less'].map(async (file) => [file, await readFile(new URL(`../${file}`, import.meta.url), 'utf8')])));
 
 test('contrast composites translucent foregrounds and backgrounds over their real backdrop', () => {
   assert.deepEqual(compositeColor('rgba(200, 100, 0, 0.25)', [100, 100, 100]), [125, 100, 75]);
@@ -26,7 +26,7 @@ test('tooltip diagnostics identify missing colors and duplicate mode/variant blo
   assert.throws(() => checkTooltipContrast(postcss.parse(rule + rule), 'mocha'), /mocha.*mode=light.*variant=default.*duplicate/);
 });
 
-test('accent sweeps visit both files sequentially in every flavor and both mixed directions, collecting failures', async () => {
+test('accent sweeps visit the userstyle sequentially in every flavor and both mixed directions, collecting failures', async () => {
   const calls = [];
   let active = 0;
   await assert.rejects(validateStyles({ sources, library, report() {}, async render(light, source, lib, dark, accent) {
@@ -35,11 +35,11 @@ test('accent sweeps visit both files sequentially in every flavor and both mixed
     await Promise.resolve();
     active--;
     throw new Error(`fixture ${calls.length}`);
-  } }), /180 validation failures:[\s\S]*fixture 1[\s\S]*fixture 180/);
-  assert.equal(calls.length, 6 * accents.length * 2);
-  assert.deepEqual(calls.slice(0, 4).map(([l,d,a,s]) => [l,d,a,s === sources['catppuccin.user.less']]), [
-    ['latte','latte','rosewater',true], ['latte','latte','rosewater',false],
-    ['latte','latte','flamingo',true], ['latte','latte','flamingo',false],
+  } }), /90 validation failures:[\s\S]*fixture 1[\s\S]*fixture 90/);
+  assert.equal(calls.length, 6 * accents.length);
+  assert.deepEqual(calls.slice(0, 2).map(([l,d,a,s]) => [l,d,a,s === sources['catppuccin.user.less']]), [
+    ['latte','latte','rosewater',true],
+    ['latte','latte','flamingo',true],
   ]);
   assert.ok(calls.some(([l,d]) => l === 'latte' && d === 'mocha'));
   assert.ok(calls.some(([l,d]) => l === 'mocha' && d === 'latte'));
@@ -86,7 +86,7 @@ test('source checks reject opaque hue mixtures, large corrections, blanket ink a
 test('Latte marker inks use the first passing 0.1% correction and dark hues stay palette-exact', async () => {
   const markers = { beige:'rosewater', blue:'blue', bordeaux:'maroon', cyan:'teal', green:'green', lime:'green', magenta:'pink', orange:'peach', pink:'pink', purple:'mauve', red:'red', yellow:'yellow' };
   for (const flavor of ['latte','frappe','macchiato','mocha']) {
-    const css = postcss.parse((await compile(flavor, sources['catppuccin-nu.user.less'], library)).css);
+    const css = postcss.parse((await compile(flavor, sources['catppuccin.user.less'], library)).css);
     let root;
     css.walkRules((rule) => { if (!root && rule.nodes.some((decl) => decl.prop === '--nuui-bg-default')) root = rule; });
     const values = new Map(root.nodes.map((decl) => [decl.prop, decl.value]));

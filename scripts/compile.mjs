@@ -202,6 +202,11 @@ const overrideAllowlist = [
 export function checkOverrides(css) {
   css.walkDecls((decl) => {
     if (decl.prop.startsWith('--')) return;
+    if (decl.parent.selector.startsWith(newDesignTokenScope)) {
+      const suffix = decl.parent.selector.slice(newDesignTokenScope.length + 1);
+      if (nuComponentTokens[suffix]?.[decl.prop] === decl.value.match(/^var\((--[\w-]+)\)$/)?.[1]) return;
+      throw new Error(`Unexpected new design override: ${decl.parent.selector} / ${decl.prop}`);
+    }
     const selectors = postcss.list.comma(decl.parent.selector);
     if (!selectors.every((selector) => overrideAllowlist.some((entry) => entry.property === decl.prop &&
         entry.value.test(decl.value) && (entry.important === undefined || entry.important === Boolean(decl.important)) &&
@@ -232,7 +237,7 @@ export function checkErrorPageExclusion(css, addon = false) {
         (node.type === 'pseudo' && node.value === ':root') || (node.type === 'class' && node.value === 'dark-mode'));
       const rootTokens = tokenSelector.test(selector.toString().trim()) && rule.nodes.every((node) =>
         node.type === 'comment' || (node.type === 'decl' && node.prop.startsWith('--')));
-      const expected = addon ? newDesignGuard : rootTokens || sharedVisualSelector(selector.toString().trim()) ? errorPageGuard : legacyGuard;
+      const expected = addon || compound.some((node) => JSON.stringify(nodeShape(node)) === guardShapes.get(newDesignGuard)) ? newDesignGuard : rootTokens || sharedVisualSelector(selector.toString().trim()) ? errorPageGuard : legacyGuard;
       if (!anchored || !compound.some((node) => JSON.stringify(nodeShape(node)) === guardShapes.get(expected))) {
         throw new Error(`Missing error-page guard or design guard: ${selector}`);
       }
@@ -399,11 +404,11 @@ export function checkNuStyle(css, flavor, reportException = console.log, accentO
     const component = Object.entries(nuComponentTokens).find(([selector]) => rule.selector === `${newDesignTokenScope} ${selector}`)?.[1];
     if (component) {
       if (accentOnly) return;
-      if (rule.nodes.length !== Object.keys(component).length || rule.nodes.some((decl) => decl.type !== 'decl' || decl.important || decl.value !== `var(${component[decl.prop]})`)) throw new Error(`Unexpected add-on component: ${rule.selector}`);
+      if (rule.nodes.length !== Object.keys(component).length || rule.nodes.some((decl) => decl.type !== 'decl' || decl.important || decl.value !== `var(${component[decl.prop]})`)) throw new Error(`Unexpected new design component: ${rule.selector}`);
       return;
     }
     const values = new Map(rule.nodes.filter((node) => node.type === 'decl').map((decl) => {
-      if (!decl.prop.startsWith('--nuui-')) throw new Error(`Unexpected add-on declaration: ${decl.prop}`);
+      if (!decl.prop.startsWith('--nuui-')) throw new Error(`Unexpected new design declaration: ${decl.prop}`);
       return [decl.prop.slice(7), decl.value];
     }));
     const actualFlavor = modeFlavors?.[rule.selector.includes('.dark-mode') ? 'dark' : 'light'] || flavor.split('/')[0];
@@ -428,7 +433,7 @@ export function checkNuStyle(css, flavor, reportException = console.log, accentO
     }
     rules++;
   });
-  if (rules !== 4) throw new Error(`Expected four add-on root/body rules, got ${rules}`);
+  if (rules !== 4) throw new Error(`Expected four new design root/body rules, got ${rules}`);
   for (const message of exceptions) reportException(message);
   return `${flavor} new design neutral ordering and contrast: PASS (${rules} rules; minimum ${minimum.toFixed(2)}:1; ${exceptions.size} Latte solid exceptions)`;
 }
@@ -471,17 +476,21 @@ export async function validateStyles({ sources, library, report = console.log, r
       const modes = { light, dark };
       const label = `${light === dark ? light : `${light}+${dark}`}/${accent}`;
       for (const [file, source] of Object.entries(sources)) {
-        const addon = file.includes('-nu');
+        const addon = false;
         await checked(`${file} ${label} compile`, async () => {
           const css = postcss.parse((await render(light, source, library, dark, accent)).css);
           const scope = `${file} ${label}`;
           await checked(`${scope} guards`, () => checkErrorPageExclusion(css, addon));
-          if (addon) {
+          const nuCSS = css.clone();
+          nuCSS.walkRules((rule) => { if (!rule.selector.startsWith(newDesignTokenScope)) rule.remove(); });
+          if (nuCSS.nodes.length) {
+            const css = nuCSS;
             await checked(`${scope} type parity`, () => checkNuTokenTypes(css, nuTokenTypes));
             await checked(`${scope} surfaces/contrast`, () => checkNuStyle(css, label, report, false, modes));
             if (css.toString().includes('--tooltip-text-color:')) await checked(`${scope} tooltips`, () => checkTooltipContrast(css, label, report, modes));
             await checked(`${scope} ink deviations`, () => checkOnAccentInk(css, modes, report, label));
-          } else {
+          }
+          {
             await checked(`${scope} overrides`, () => checkOverrides(css));
             await checked(`${scope} RGB`, () => css.walkDecls(/^--/, checkRGBCounterpart) && undefined);
             await checked(`${scope} tooltips`, () => checkTooltipContrast(css, label, report, modes));
@@ -498,13 +507,13 @@ export async function validateStyles({ sources, library, report = console.log, r
             subset.walkRules((rule) => { if (rule.selector.includes('.dark-mode') !== (mode === 'dark')) rule.remove(); });
             await checked(`${scope} ${mode} ΔE`, () => checkPalette(subset, flavor, { allowlist: paletteAllowlist }));
           }
-          if (accent === 'mauve' && light === dark) report(`${light}${addon ? ' add-on' : ''}: PASS`);
+          if (accent === 'mauve' && light === dark) report(`${light}${addon ? ' new design' : ''}: PASS`);
         });
       }
     }
   }
   if (failures.length) throw new Error(`${failures.length} validation failures:\n${failures.join('\n')}`);
-  report('Both userstyles: all 15 accents × four flavors plus latte/mocha and mocha/latte mixed modes; sequential compilation, guards, source derivation bounds/literals, main override allowlist/RGB/neutral ordering/disabled and primary contrast/tooltips, add-on type parity/distinct surfaces/contrast/ink deviations, and all compiled colors ΔE: PASS');
+  report('Userstyle: all 15 accents × four flavors plus latte/mocha and mocha/latte mixed modes; sequential compilation, guards, source derivation bounds/literals, main override allowlist/RGB/neutral ordering/disabled and primary contrast/tooltips, new design type parity/distinct surfaces/contrast/ink deviations, and all compiled colors ΔE: PASS');
 }
 
 export function checkMainContrast(css, modes, report = console.log, label = '') {
@@ -551,7 +560,7 @@ export function checkOnAccentInk(css, modes, report = console.log, label = '') {
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
-    const sources = Object.fromEntries(await Promise.all(['catppuccin.user.less', 'catppuccin-nu.user.less'].map(async (file) =>
+    const sources = Object.fromEntries(await Promise.all(['catppuccin.user.less'].map(async (file) =>
       [file, await readFile(new URL(`../${file}`, import.meta.url), 'utf8')])));
     await validateStyles({ sources, library: await loadPinnedLibrary() });
   } catch (error) {

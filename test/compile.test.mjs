@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, copyFile, writeFile, symlink, rm, realpath } from 'node:fs/promises';
+import { appendFile, mkdtemp, mkdir, copyFile, writeFile, symlink, rm, realpath } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -44,7 +44,7 @@ test('CLI checks execute from a path containing spaces and URL-encoded character
   const nuAssignments = [...new Set(nuContrastPairs().flat())].map((name) =>
     `--nuui-${name}: ${name.startsWith('bg-') ? '#ffffff' : '#000000'};`).join(' ');
   const { newDesignTokenScope } = await import('../scripts/guards.mjs');
-  await writeFile(join(directory, 'catppuccin-nu.user.less'), `${importLine}
+  await appendFile(join(directory, 'catppuccin.user.less'), `
     .nu(@flavor) { ${nuAssignments}
       --nuui-bg-default: if((@flavor = latte), #fff, #eee);
       --nuui-bg-canvas-backdrop: #000;
@@ -71,9 +71,9 @@ test('CLI checks execute from a path containing spaces and URL-encoded character
     const { stdout } = await promisify(execFile)(process.execPath, ['--import', pathToFileURL(join(directory, 'mock-fetch.mjs')).href, join(directory, 'scripts', `${script}.mjs`)], { env: { ...process.env, BACKLOG_PAGE_URL: 'https://simochee.backlog.com/fixture-page' } });
     assert.match(stdout, expected);
   }
-  for (const file of ['catppuccin.user.less', 'catppuccin-nu.user.less']) await copyFile(new URL(`../${file}`, import.meta.url), join(directory, file));
+  for (const file of ['catppuccin.user.less']) await copyFile(new URL(`../${file}`, import.meta.url), join(directory, file));
   const { stdout: compileOutput } = await promisify(execFile)(process.execPath, ['--import', pathToFileURL(join(directory, 'offline-fetch.mjs')).href, join(directory, 'scripts/compile.mjs')], { maxBuffer: 4 * 1024 * 1024 });
-  assert.match(compileOutput, /Both userstyles: all 15 accents.*sequential compilation.*PASS/);
+  assert.match(compileOutput, /Userstyle: all 15 accents.*sequential compilation.*PASS/);
   await writeFile(join(directory, 'failed-fetch.mjs'), `globalThis.fetch = async () => { throw new Error('fixture download failure'); };`);
   await assert.rejects(promisify(execFile)(process.execPath,
     ['--import', pathToFileURL(join(directory, 'failed-fetch.mjs')).href, join(directory, 'scripts/literals.mjs')]),
