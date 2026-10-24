@@ -46,3 +46,4 @@ jobs:
       - run: npm ci --ignore-scripts
       - run: npm run check:coverage
       - run: npm run check:dark-text
+        if: ${{ !cancelled() }}

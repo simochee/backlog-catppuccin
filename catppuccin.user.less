@@ -139,7 +139,6 @@
   .dark-mode .pill--square.-subtasking {
     color: var(--textColorWeak);
   }
-  // Migration card links share the card's accent surface and dark text.
   .dark-mode .Page--edit-wiki .card.-wiki-migration:is(.is_done, .is_not-yet) a,
   .dark-mode .Page--find-wiki .card.-wiki-migration:is(.is_done, .is_not-yet) a,
   .dark-mode .Page--view-wiki .card.-wiki-migration:is(.is_done, .is_not-yet) a,
@@ -168,12 +167,9 @@
     .darkContent() when not (@flavor = latte) { @darkContent: @crust; }
     .darkContent();
 
-    // aiColor
     --aiColor: @mauve;
     --aiColorHover: @mauve;
-    // AI icon
     --aiIconColor: @mauve;
-    // backgroundColor
     --backgroundColorBase: @base;
     --backgroundColorDefault: @base;
     --backgroundColorDisabled: @surface0;
@@ -187,7 +183,6 @@
     --backgroundColorUpdateHover: @surface1;
     --backgroundColorWeak: @mantle;
     --backgroundColorWeakOnBaseBG: @mantle;
-    // borderColor
     --borderColorAi: @mauve;
     --borderColorCardBG: @surface1;
     --borderColorDefault: @surface1;
@@ -195,12 +190,10 @@
     --borderColorOnBaseElement: @surface1;
     --borderColorPrimary: @overlay0;
     --borderColorWeak: @surface0;
-    // brandColor
     --brandColorBacklog: @green;
     --brandColorCacoo: @blue;
     --brandColorNulab: @text;
     --brandColorTypetalk: @peach;
-    // commonColor
     --commonColorAcua: @teal;
     --commonColorAcua-rgb: red(@teal), green(@teal), blue(@teal);
     --commonColorBlack: @darkContent;
@@ -223,10 +216,8 @@
     --commonColorShockingPink-rgb: red(@flamingo), green(@flamingo), blue(@flamingo);
     --commonColorYellow: @yellow;
     --commonColorYellow-rgb: red(@yellow), green(@yellow), blue(@yellow);
-    // Emoji picker surface and accent channels.
     --color-border: @surface1;
     --rgb-accent: red(@accent), green(@accent), blue(@accent);
-    // defaultColor
     --defaultColorAccent: @accent;
     --defaultColorAccent-rgb: red(@accent), green(@accent), blue(@accent);
     --defaultColorBase: @projectBase;
@@ -236,7 +227,6 @@
     --defaultColorMain: @accent;
     --defaultColorMainInverse: @base;
     --defaultColorSub-1: @projectSub1;
-    // diffColor
     --diffColorAddedBase: fade(@green, 16%);
     --diffColorAddedBase-2: fade(@green, 16%);
     --diffColorAddedBaseHover: fade(@green, 24%);
@@ -248,44 +238,32 @@
     --diffColorDeletedBase-2: fade(@red, 16%);
     --diffColorDeletedBaseHover: fade(@red, 24%);
     --diffColorDeletedText: @red;
-    // errorColor
     --errorColorScaleAccent: @red;
     --errorColorScaleBase: fade(@red, 16%);
     --errorColorScaleText: @red;
-    // filesActionColor
     --filesActionColor: @yellow;
     --filesActionColor-rgb: red(@yellow), green(@yellow), blue(@yellow);
-    // gitActionColor
     --gitActionColor: @peach;
     --gitActionColor-rgb: red(@peach), green(@peach), blue(@peach);
-    // iconColor
     --iconColorDefault: @subtext1;
     --iconColorDisabled: @overlay0;
     --iconColorDsabled: @overlay0;
     --iconColorPseudo: @subtext0;
     --iconColorWeak: @subtext0;
-    // issueActionColor
     --issueActionColor: @green;
     --issueActionColor-rgb: red(@green), green(@green), blue(@green);
-    // notificationColor
     --notificationColorDefault: @red;
-    // nuui
     --nuui-bg-marker-purple-default: fade(@mauve, 16%);
     --nuui-text-marker-purple: @mauve;
-    // projectActionColor
     --projectActionColor: @blue;
     --projectActionColor-rgb: red(@blue), green(@blue), blue(@blue);
-    // pullRequestActionColor
     --pullRequestActionColor: @mauve;
     --pullRequestActionColor-rgb: red(@mauve), green(@mauve), blue(@mauve);
-    // red
     --red: @red;
-    // starColor
     --starColorGreen: @green;
     --starColorLime: @green;
     --starColorRed: @red;
     --starColorYellow: @yellow;
-    // statusColor
     --statusColor-1: @red;
     --statusColor-1-rgb: red(@red), green(@red), blue(@red);
     --statusColor-2: @blue;
@@ -298,14 +276,11 @@
     --statusColor-5-rgb: red(@yellow), green(@yellow), blue(@yellow);
     --statusColor-other: @mauve;
     --statusColor-other-rgb: red(@mauve), green(@mauve), blue(@mauve);
-    // successColor
     --successColorScaleAccent: @green;
     --successColorScaleBase: fade(@green, 16%);
     --successColorScaleText: @green;
-    // svnActionColor
     --svnActionColor: @teal;
     --svnActionColor-rgb: red(@teal), green(@teal), blue(@teal);
-    // textColor
     --textColorDefault: @text;
     --textColorInverse: @base;
     --textColorPrimary: @text;
@@ -314,18 +289,15 @@
     --textColorWeak: @subtext0;
     --textColorWeak-rgb: red(@subtext0), green(@subtext0), blue(@subtext0);
     --textColorWeightAdjustment: @text;
-    // tooltipBaseColor
     --tooltipBaseColor: @darkContent;
     // Backlog redefines this on the elements themselves in dark mode, so the
     // value inherited from :root/body does not reach them.
     [data-tooltip], .message-tip {
       --tooltipBaseColor: @darkContent;
     }
-    // warningColor
     --warningColorScaleAccent: @yellow;
     --warningColorScaleBase: fade(@yellow, 16%);
     --warningColorScaleText: @yellow;
-    // wikiActionColor
     --wikiActionColor: @pink;
     --wikiActionColor-rgb: red(@pink), green(@pink), blue(@pink);
   }
