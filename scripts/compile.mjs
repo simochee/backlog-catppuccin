@@ -154,9 +154,9 @@ const overrideAllowlist = [
     value: new RegExp(`^var\\(${token}\\)$`),
     important,
   })),
-  { selector: /^\.dark-mode .+$/, property: 'color', value: /^var\(--backgroundColorSchemeBase\)$/ },
-  { selector: /^\.dark-mode \.pill--square\.-subtasking$/, property: 'color', value: /^var\(--textColorWeak\)$/, important: false },
-  { selector: /^:root:not\(\.dark-mode\) body\.Page--view-kanban \.card$/, property: 'background-color', value: /^var\(--backgroundColorSchemeBase\)$/ },
+  { selector: new RegExp(`^${escapeSelector('.dark-mode ')}.+$`), property: 'color', value: /^var\(--backgroundColorSchemeBase\)$/ },
+  { selector: new RegExp(`^${escapeSelector('.dark-mode .pill--square.-subtasking')}$`), property: 'color', value: /^var\(--textColorWeak\)$/, important: false },
+  { selector: new RegExp(`^${escapeSelector(':root:not(.dark-mode) body.Page--view-kanban .card')}$`), property: 'background-color', value: /^var\(--backgroundColorSchemeBase\)$/ },
   { selector: new RegExp(`^${flavoredScope}${escapeSelector('.upgrade-bar.generic-cta-bar')}$`), property: 'background-image', value: new RegExp(`^linear-gradient\\(45deg, ${color}, ${color}\\)$`, 'i') },
   { selector: new RegExp(`^${flavoredScope}${escapeSelector('.na-choice-box.is_active')}$`), property: 'border-color', value: new RegExp(`^${color}$`, 'i') },
   ...[...sidebarProperties].flatMap(([selector, properties]) => properties.map((property) => ({
