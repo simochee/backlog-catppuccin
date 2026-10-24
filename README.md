@@ -139,7 +139,7 @@ neutral states, contrast, new-design token types, and CIE76 palette distance are
 failures are collected before exit. Palette summaries count literal occurrences
 as exact, within ΔE 12, or explicitly allowlisted with a reason. Alpha colors are
 compared by their unpremultiplied hue, while contrast composites them over the
-hosting base. The type manifest contains public token names only.
+hosting base, subtle and floating surfaces. The type manifest contains public token names only.
 
 [Catppuccin’s style guide](https://github.com/catppuccin/catppuccin/blob/main/docs/style-guide.md)
 defines the pane, surface, text, cursor, selection, syntax and diff roles. Neutral
@@ -148,11 +148,15 @@ tints use palette alpha. Colored ink uses pure hues, with minimum 0.1% Latte HSL
 corrections capped at 20% where needed for the 3:1 floor. File-path headers use
 mantle; separator ink uses surface0. Line numbers use subtext0 on surface0 and
 alternate mantle rows. Inputs use surface0 in dark flavors and mantle in Latte,
-with a base page in every flavor. Marker tints use 14% subtle, 24% Latte
-default/shape, and 30% highlight (26% in Frappé to retain 3:1); dark default/shape
+with a base page in every flavor. The shared scheme-base token remains base
+for accent ink; guarded input rules and the raised card token provide separation.
+Marker tints use 14% subtle and 20% highlight in Latte, 8% subtle and 12%
+highlight in dark flavors, and 24% Latte default/shape; dark default/shape
 markers retain solid palette hues. Marker borders use 16% subtle and 30% default.
-Exact-color exceptions
-in `scripts/style-policy.mjs` document the corrections exceeding ΔE 12. Primary
+The LESS ink table defines each hue and background-role correction once.
+`scripts/style-policy.mjs` derives exact-color exceptions from that table and
+checks compiled lightness deltas against the 20% cap. Latte accent fills use the
+smallest 0.1% correction reaching 2.5:1 with base ink where necessary. Primary
 hover/active colors change lightness by 2%/4%; disabled neutral surfaces use 3%
 to distinguish them from every ghost state; Frappé pressed uses a 2% surface2
 step because overlay0 would fall below 3:1. On-accent ink prefers base and logs
