@@ -40,8 +40,8 @@ test('coverage ignores LESS line comments and preserves quoted HTTPS URLs', () =
 
 test('discovery adds and deduplicates all supported bundles from the version path', () => {
   const urls = stylesheetURLs('<link rel="stylesheet" href="https://assets.backlog.com/playassets/test-version/styles/Common.css">');
-  assert.equal(urls.length, 8);
-  for (const path of ['styles/Common.css', 'styles/ReactApp.css', 'styles/Kanban.css', 'styles/Wiki.css', 'styles/Git.css', 'styles/Documents.css', 'react/static/css/index.css', 'react/global-bar/static/css/main.css']) {
+  assert.equal(urls.length, 14);
+  for (const path of ['styles/Common.css', 'styles/ReactApp.css', 'styles/Kanban.css', 'styles/Wiki.css', 'styles/Git.css', 'styles/Documents.css', ...['Common', 'ReactApp', 'Kanban', 'Wiki', 'Git', 'Documents'].map((name) => `styles_nu-ui/${name}.css`), 'react/static/css/index.css', 'react/global-bar/static/css/main.css']) {
     assert.ok(urls.includes(`https://assets.backlog.com/playassets/test-version/${path}`));
   }
 });
@@ -52,11 +52,11 @@ test('missing discovered bundles warn and skip, while extra URLs and other error
   t.mock.method(console, 'error', (message) => warnings.push(message));
   t.mock.method(globalThis, 'fetch', async (url) => {
     if (String(url).includes('this-page-does-not-exist')) return new Response('<link rel="stylesheet" href="https://assets.backlog.com/playassets/test/styles/Common.css">', { status: 404 });
-    if (String(url).endsWith('/Common.css')) return new Response(':root { --ink: red; }');
+    if (String(url).endsWith('/styles/Common.css')) return new Response(':root { --ink: red; }');
     return new Response('', { status: 404 });
   });
   assert.equal((await loadStylesheets()).length, 1);
-  assert.equal(warnings.filter((line) => line.startsWith('Warning: skipped missing')).length, 7);
+  assert.equal(warnings.filter((line) => line.startsWith('Warning: skipped missing')).length, 13);
   await assert.rejects(loadStylesheets(['https://assets.backlog.com/extra.css']), /HTTP 404/);
   t.mock.method(globalThis, 'fetch', async () => new Response('', { status: 500 }));
   await assert.rejects(loadStylesheets(), /HTTP 500/);
@@ -79,10 +79,10 @@ test('speculative 404 response bodies are cancelled and explicit extras stay req
   t.mock.method(console, 'error', () => {});
   t.mock.method(globalThis, 'fetch', async (url) => {
     if (String(url).includes('this-page-does-not-exist')) return new Response('<link rel="stylesheet" href="https://assets.backlog.com/playassets/test/styles/Common.css">');
-    if (String(url).endsWith('/Common.css')) return new Response('');
+    if (String(url).endsWith('/styles/Common.css')) return new Response('');
     return new Response(new ReadableStream({ cancel() { cancelled++; } }), { status: 404 });
   });
   assert.equal((await loadStylesheets()).length, 1);
-  assert.equal(cancelled, 7);
+  assert.equal(cancelled, 13);
   await assert.rejects(loadStylesheets(['https://assets.backlog.com/playassets/test/styles/Wiki.css']), /HTTP 404/);
 });

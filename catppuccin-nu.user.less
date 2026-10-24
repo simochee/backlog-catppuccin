@@ -1,0 +1,318 @@
+/* ==UserStyle==
+@name Backlog Catppuccin New Design
+@namespace github.com/simochee/backlog-catppuccin
+@homepageURL https://github.com/simochee/backlog-catppuccin
+@version 2026.10.24
+@updateURL https://github.com/simochee/backlog-catppuccin/raw/main/catppuccin-nu.user.less
+@supportURL https://github.com/simochee/backlog-catppuccin/issues
+@description New design add-on; requires Backlog Catppuccin
+@author simochee
+@license MIT
+
+@preprocessor less
+@var select lightFlavor "Light Flavor" ["latte:Latte*", "frappe:Frappé", "macchiato:Macchiato", "mocha:Mocha"]
+@var select darkFlavor "Dark Flavor" ["latte:Latte", "frappe:Frappé", "macchiato:Macchiato", "mocha:Mocha*"]
+@var select accentColor "Accent" ["rosewater:Rosewater", "flamingo:Flamingo", "pink:Pink", "mauve:Mauve*", "red:Red", "maroon:Maroon", "peach:Peach", "yellow:Yellow", "green:Green", "teal:Teal", "blue:Blue", "sapphire:Sapphire", "sky:Sky", "lavender:Lavender", "subtext0:Gray"]
+==/UserStyle== */
+
+@import "https://userstyles.catppuccin.com/lib/std/v1.less";
+
+@-moz-document regexp("https?://([a-zA-Z0-9-]+\\.)+backlog\\.(com|jp)(:[0-9]+)?/.*"), regexp("https?://([a-zA-Z0-9-]+\\.)+backlogtool\\.com(:[0-9]+)?/.*") {
+    :root:root:root:root:root:where(:not(:has(> body.Page--error)):has(> head > link[href*="/styles_nu-ui/"])) {
+      #nuui(@lightFlavor);
+      body { #nuui(@lightFlavor); }
+    }
+    :root:root:root:root:root:where(:not(:has(> body.Page--error)):has(> head > link[href*="/styles_nu-ui/"])).dark-mode {
+      #nuui(@darkFlavor);
+      body { #nuui(@darkFlavor); }
+    }
+
+    :root:root:root:root:root:where(:not(:has(> body.Page--error)):has(> head > link[href*="/styles_nu-ui/"])) {
+      .project-nav-list {
+        --nuui-bg-ghost-inverted-hover: var(--nuui-bg-ghost-hover);
+        --nuui-bg-ghost-inverted-active: var(--nuui-bg-ghost-active);
+      }
+      .card.-wiki-migration.is_not-yet {
+        --nuui-text-on-marker-inverted: var(--nuui-text-warning);
+        --nuui-icon-on-marker-inverted: var(--nuui-icon-warning);
+        border-color: var(--nuui-border-warning-subtle);
+        .wiki-migration-image svg path { fill: var(--nuui-icon-warning); }
+        .button {
+          background-color: var(--nuui-bg-warning-default);
+          border-color: var(--nuui-bg-warning-default);
+          color: var(--nuui-text-on-warning);
+          &:is(:hover, :focus, :focus-visible) {
+            background-color: var(--nuui-bg-default);
+            border-color: var(--nuui-border-warning-subtle);
+            color: var(--nuui-text-warning);
+          }
+        }
+      }
+    }
+
+    #nuui(@flavor) {
+      #lib.palette();
+      @darkInk: if((@flavor = latte), @text, @crust);
+      @lightInk: if((@flavor = latte), @base, @text);
+      #on(@color) {
+        @a: luma(@color);
+        @d: luma(@darkInk);
+        @l: luma(@lightInk);
+        @darkRatio: ((max(@a, @d) + 5%) / (min(@a, @d) + 5%));
+        @lightRatio: ((max(@a, @l) + 5%) / (min(@a, @l) + 5%));
+        @result: if((@darkRatio > @lightRatio), @darkInk, @lightInk);
+      }
+      @onAccent: #on(mix(@accent, @base, @solidWeight))[@result];
+      @primaryStateBase: if((@onAccent = @darkInk), @lightInk, @darkInk);
+      @onDanger: #on(mix(@red, @base, @solidWeight))[@result];
+      @dangerStateBase: if((@onDanger = @darkInk), @lightInk, @darkInk);
+      @onWarning: #on(mix(@yellow, @base, @solidWeight))[@result];
+      @onSuccess: #on(mix(@green, @base, @solidWeight))[@result];
+      @onInfo: #on(mix(@blue, @base, @solidWeight))[@result];
+      .roles() when (@flavor = latte) {
+        @sidebar: @crust;
+        @canvas: @mantle;
+        @default: @base;
+        @floating: @base;
+        @subtle: @mantle;
+        @inverted: @text;
+        @onInverted: @base;
+        @markerContent: @text;
+        @tint: 22%;
+        @inkWeight: 40%;
+        @markerWeight: 30%;
+        @solidWeight: 100%;
+      }
+      .roles() when not (@flavor = latte) {
+        @sidebar: @mantle;
+        @canvas: @mantle;
+        @default: @base;
+        @floating: @surface0;
+        @subtle: @surface0;
+        @inverted: @text;
+        @onInverted: @crust;
+        @markerContent: @crust;
+        @tint: 18%;
+        @inkWeight: 100%;
+        @markerWeight: 100%;
+        @solidWeight: 100%;
+      }
+      .roles();
+      --nuui-bg-ai-default: linear-gradient(115deg, fade(@sapphire, 8%), fade(@mauve, 10%), fade(@pink, 8%));
+      --nuui-bg-ai-hover: linear-gradient(115deg, fade(@sapphire, 16%), fade(@mauve, 20%), fade(@pink, 16%));
+      --nuui-bg-canvas-backdrop: @crust;
+      --nuui-bg-canvas-default: @canvas;
+      --nuui-bg-danger-active: mix(@red, @dangerStateBase, (@solidWeight * 80% / 100%));
+      --nuui-bg-danger-banner: mix(@red, @base, @tint);
+      --nuui-bg-danger-banner-critical: mix(@red, @base, @solidWeight);
+      --nuui-bg-danger-default: mix(@red, @base, @solidWeight);
+      --nuui-bg-danger-ghost-active: mix(@red, @base, 30%);
+      --nuui-bg-danger-ghost-hover: mix(@red, @base, @tint);
+      --nuui-bg-danger-highlight: mix(@red, @base, 30%);
+      --nuui-bg-danger-hover: mix(@red, @dangerStateBase, (@solidWeight * 90% / 100%));
+      --nuui-bg-danger-shape: mix(@red, @base, @solidWeight);
+      --nuui-bg-danger-subtle: mix(@red, @base, @tint);
+      --nuui-bg-default: @default;
+      --nuui-bg-disabled: @surface0;
+      --nuui-bg-floating: @floating;
+      --nuui-bg-ghost-active: @surface1;
+      --nuui-bg-ghost-hover: @surface0;
+      --nuui-bg-ghost-inverted-active: mix(@inverted, @onInverted, 80%);
+      --nuui-bg-ghost-inverted-hover: mix(@inverted, @onInverted, 90%);
+      --nuui-bg-ghost-pressed: @surface2;
+      --nuui-bg-highlight: @surface1;
+      --nuui-bg-info-banner: mix(@blue, @base, @tint);
+      --nuui-bg-info-default: mix(@blue, @base, @solidWeight);
+      --nuui-bg-info-highlight: mix(@blue, @base, 30%);
+      --nuui-bg-info-subtle: mix(@blue, @base, @tint);
+      --nuui-bg-inverted: @inverted;
+      --nuui-bg-marker-beige-default: mix(@rosewater, @base, @markerWeight);
+      --nuui-bg-marker-beige-highlight: mix(@rosewater, @base, @tint);
+      --nuui-bg-marker-beige-shape: mix(@rosewater, @base, @markerWeight);
+      --nuui-bg-marker-beige-subtle: mix(@rosewater, @base, @tint);
+      --nuui-bg-marker-blue-default: mix(@blue, @base, @markerWeight);
+      --nuui-bg-marker-blue-highlight: mix(@blue, @base, @tint);
+      --nuui-bg-marker-blue-shape: mix(@blue, @base, @markerWeight);
+      --nuui-bg-marker-blue-subtle: mix(@blue, @base, @tint);
+      --nuui-bg-marker-bordeaux-default: mix(@maroon, @base, @markerWeight);
+      --nuui-bg-marker-bordeaux-highlight: mix(@maroon, @base, @tint);
+      --nuui-bg-marker-bordeaux-shape: mix(@maroon, @base, @markerWeight);
+      --nuui-bg-marker-bordeaux-subtle: mix(@maroon, @base, @tint);
+      --nuui-bg-marker-cyan-default: mix(@teal, @base, @markerWeight);
+      --nuui-bg-marker-cyan-highlight: mix(@teal, @base, @tint);
+      --nuui-bg-marker-cyan-shape: mix(@teal, @base, @markerWeight);
+      --nuui-bg-marker-cyan-subtle: mix(@teal, @base, @tint);
+      --nuui-bg-marker-green-default: mix(@green, @base, @markerWeight);
+      --nuui-bg-marker-green-highlight: mix(@green, @base, @tint);
+      --nuui-bg-marker-green-shape: mix(@green, @base, @markerWeight);
+      --nuui-bg-marker-green-subtle: mix(@green, @base, @tint);
+      --nuui-bg-marker-grey-default: mix(@subtext0, @base, @markerWeight);
+      --nuui-bg-marker-grey-highlight: mix(@subtext0, @base, @tint);
+      --nuui-bg-marker-grey-shape: mix(@subtext0, @base, @markerWeight);
+      --nuui-bg-marker-grey-subtle: mix(@subtext0, @base, @tint);
+      --nuui-bg-marker-interactive-layer-active: fade(@text, 16%);
+      --nuui-bg-marker-interactive-layer-hover: fade(@text, 8%);
+      --nuui-bg-marker-lime-default: mix(@green, @base, @markerWeight);
+      --nuui-bg-marker-lime-highlight: mix(@green, @base, @tint);
+      --nuui-bg-marker-lime-shape: mix(@green, @base, @markerWeight);
+      --nuui-bg-marker-lime-subtle: mix(@green, @base, @tint);
+      --nuui-bg-marker-magenta-default: mix(@pink, @base, @markerWeight);
+      --nuui-bg-marker-magenta-highlight: mix(@pink, @base, @tint);
+      --nuui-bg-marker-magenta-shape: mix(@pink, @base, @markerWeight);
+      --nuui-bg-marker-magenta-subtle: mix(@pink, @base, @tint);
+      --nuui-bg-marker-orange-default: mix(@peach, @base, @markerWeight);
+      --nuui-bg-marker-orange-highlight: mix(@peach, @base, @tint);
+      --nuui-bg-marker-orange-shape: mix(@peach, @base, @markerWeight);
+      --nuui-bg-marker-orange-subtle: mix(@peach, @base, @tint);
+      --nuui-bg-marker-pink-default: mix(@pink, @base, @markerWeight);
+      --nuui-bg-marker-pink-highlight: mix(@pink, @base, @tint);
+      --nuui-bg-marker-pink-shape: mix(@pink, @base, @markerWeight);
+      --nuui-bg-marker-pink-subtle: mix(@pink, @base, @tint);
+      --nuui-bg-marker-purple-default: mix(@mauve, @base, @markerWeight);
+      --nuui-bg-marker-purple-highlight: mix(@mauve, @base, @tint);
+      --nuui-bg-marker-purple-shape: mix(@mauve, @base, @markerWeight);
+      --nuui-bg-marker-purple-subtle: mix(@mauve, @base, @tint);
+      --nuui-bg-marker-red-default: mix(@red, @base, @markerWeight);
+      --nuui-bg-marker-red-highlight: mix(@red, @base, @tint);
+      --nuui-bg-marker-red-shape: mix(@red, @base, @markerWeight);
+      --nuui-bg-marker-red-subtle: mix(@red, @base, @tint);
+      --nuui-bg-marker-yellow-default: mix(@yellow, @base, @markerWeight);
+      --nuui-bg-marker-yellow-highlight: mix(@yellow, @base, @tint);
+      --nuui-bg-marker-yellow-shape: mix(@yellow, @base, @markerWeight);
+      --nuui-bg-marker-yellow-subtle: mix(@yellow, @base, @tint);
+      --nuui-bg-overlay: fade(@crust, 65%);
+      --nuui-bg-primary-active: mix(@accent, @primaryStateBase, (@solidWeight * 80% / 100%));
+      --nuui-bg-primary-default: mix(@accent, @base, @solidWeight);
+      --nuui-bg-primary-hover: mix(@accent, @primaryStateBase, (@solidWeight * 90% / 100%));
+      --nuui-bg-primary-row-selected: mix(@accent, @base, @tint);
+      --nuui-bg-primary-shape: mix(@accent, @base, @solidWeight);
+      --nuui-bg-primary-subtle: mix(@accent, @base, @tint);
+      --nuui-bg-row-header: @subtle;
+      --nuui-bg-shape-disabled: @overlay0;
+      --nuui-bg-subtle: @subtle;
+      --nuui-bg-success-banner: mix(@green, @base, @tint);
+      --nuui-bg-success-default: mix(@green, @base, @solidWeight);
+      --nuui-bg-success-highlight: mix(@green, @base, 30%);
+      --nuui-bg-success-shape: mix(@green, @base, @solidWeight);
+      --nuui-bg-success-subtle: mix(@green, @base, @tint);
+      --nuui-bg-theme-nav: @sidebar;
+      --nuui-bg-warning-banner: mix(@yellow, @base, @tint);
+      --nuui-bg-warning-default: mix(@yellow, @base, @solidWeight);
+      --nuui-bg-warning-highlight: mix(@yellow, @base, 30%);
+      --nuui-bg-warning-shape: mix(@yellow, @base, @solidWeight);
+      --nuui-bg-warning-subtle: mix(@yellow, @base, @tint);
+      --nuui-border-ai: linear-gradient(135deg, @sapphire, @mauve, @pink);
+      --nuui-border-button: @overlay0;
+      --nuui-border-danger-default: mix(@red, @base, 100%);
+      --nuui-border-danger-subtle: mix(@red, @base, 35%);
+      --nuui-border-default: @surface1;
+      --nuui-border-disabled: @surface0;
+      --nuui-border-field: @overlay0;
+      --nuui-border-floating: @surface1;
+      --nuui-border-focus: @accent;
+      --nuui-border-info-subtle: mix(@blue, @base, 35%);
+      --nuui-border-inverted: @onInverted;
+      --nuui-border-marker-beige-default: mix(@rosewater, @base, 60%);
+      --nuui-border-marker-beige-subtle: mix(@rosewater, @base, 30%);
+      --nuui-border-marker-blue-default: mix(@blue, @base, 60%);
+      --nuui-border-marker-blue-subtle: mix(@blue, @base, 30%);
+      --nuui-border-marker-bordeaux-default: mix(@maroon, @base, 60%);
+      --nuui-border-marker-bordeaux-subtle: mix(@maroon, @base, 30%);
+      --nuui-border-marker-cyan-default: mix(@teal, @base, 60%);
+      --nuui-border-marker-cyan-subtle: mix(@teal, @base, 30%);
+      --nuui-border-marker-green-default: mix(@green, @base, 60%);
+      --nuui-border-marker-green-subtle: mix(@green, @base, 30%);
+      --nuui-border-marker-grey-default: mix(@subtext0, @base, 60%);
+      --nuui-border-marker-grey-subtle: mix(@subtext0, @base, 30%);
+      --nuui-border-marker-lime-default: mix(@green, @base, 60%);
+      --nuui-border-marker-lime-subtle: mix(@green, @base, 30%);
+      --nuui-border-marker-magenta-default: mix(@pink, @base, 60%);
+      --nuui-border-marker-magenta-subtle: mix(@pink, @base, 30%);
+      --nuui-border-marker-orange-default: mix(@peach, @base, 60%);
+      --nuui-border-marker-orange-subtle: mix(@peach, @base, 30%);
+      --nuui-border-marker-pink-default: mix(@pink, @base, 60%);
+      --nuui-border-marker-pink-subtle: mix(@pink, @base, 30%);
+      --nuui-border-marker-purple-default: mix(@mauve, @base, 60%);
+      --nuui-border-marker-purple-subtle: mix(@mauve, @base, 30%);
+      --nuui-border-marker-red-default: mix(@red, @base, 60%);
+      --nuui-border-marker-red-subtle: mix(@red, @base, 30%);
+      --nuui-border-marker-yellow-default: mix(@yellow, @base, 60%);
+      --nuui-border-marker-yellow-subtle: mix(@yellow, @base, 30%);
+      --nuui-border-strong: @overlay0;
+      --nuui-border-subtle: @surface0;
+      --nuui-border-success-subtle: mix(@green, @base, 35%);
+      --nuui-border-warning-subtle: mix(@yellow, @base, 35%);
+      --nuui-brand-backlog: @green;
+      --nuui-brand-cacoo: @blue;
+      --nuui-brand-nulab-secondary: @text;
+      --nuui-elevation-shadow-large: 0 8px 24px fade(@crust, 30%);
+      --nuui-elevation-shadow-medium: 0 4px 12px fade(@crust, 24%);
+      --nuui-elevation-shadow-small: 0 2px 4px fade(@crust, 18%);
+      --nuui-icon-ai: linear-gradient(125deg, @blue, @mauve, @pink);
+      --nuui-icon-danger: mix(@red, @text, @inkWeight);
+      --nuui-icon-default: @text;
+      --nuui-icon-disabled: @overlay0;
+      --nuui-icon-info: mix(@blue, @text, @inkWeight);
+      --nuui-icon-inverted: @onInverted;
+      --nuui-icon-link: mix(@accent, @text, @inkWeight);
+      --nuui-icon-marker-beige: mix(@rosewater, @text, @inkWeight);
+      --nuui-icon-marker-blue: mix(@blue, @text, @inkWeight);
+      --nuui-icon-marker-bordeaux: mix(@maroon, @text, @inkWeight);
+      --nuui-icon-marker-cyan: mix(@teal, @text, @inkWeight);
+      --nuui-icon-marker-green: mix(@green, @text, @inkWeight);
+      --nuui-icon-marker-grey: mix(@subtext0, @text, @inkWeight);
+      --nuui-icon-marker-lime: mix(@green, @text, @inkWeight);
+      --nuui-icon-marker-magenta: mix(@pink, @text, @inkWeight);
+      --nuui-icon-marker-orange: mix(@peach, @text, @inkWeight);
+      --nuui-icon-marker-pink: mix(@pink, @text, @inkWeight);
+      --nuui-icon-marker-purple: mix(@mauve, @text, @inkWeight);
+      --nuui-icon-marker-red: mix(@red, @text, @inkWeight);
+      --nuui-icon-marker-yellow: mix(@yellow, @text, @inkWeight);
+      --nuui-icon-on-danger: @onDanger;
+      --nuui-icon-on-ghost: @text;
+      --nuui-icon-on-info: @onInfo;
+      --nuui-icon-on-marker-default: @markerContent;
+      --nuui-icon-on-marker-inverted: @markerContent;
+      --nuui-icon-on-primary: @onAccent;
+      --nuui-icon-on-success: @onSuccess;
+      --nuui-icon-on-theme-nav: @text;
+      --nuui-icon-on-warning: @onWarning;
+      --nuui-icon-primary: mix(@accent, @text, @inkWeight);
+      --nuui-icon-subtle: @subtext0;
+      --nuui-icon-success: mix(@green, @text, @inkWeight);
+      --nuui-icon-warning: mix(@yellow, @text, @inkWeight);
+      --nuui-text-danger: mix(@red, @text, @inkWeight);
+      --nuui-text-default: @text;
+      --nuui-text-disabled: @overlay0;
+      --nuui-text-info: mix(@blue, @text, @inkWeight);
+      --nuui-text-inverted: @onInverted;
+      --nuui-text-inverted-disabled: mix(@onInverted, @inverted, 70%);
+      --nuui-text-inverted-subtle: mix(@onInverted, @inverted, 85%);
+      --nuui-text-link: mix(@accent, @text, @inkWeight);
+      --nuui-text-marker-beige: mix(@rosewater, @text, @inkWeight);
+      --nuui-text-marker-blue: mix(@blue, @text, @inkWeight);
+      --nuui-text-marker-bordeaux: mix(@maroon, @text, @inkWeight);
+      --nuui-text-marker-cyan: mix(@teal, @text, @inkWeight);
+      --nuui-text-marker-green: mix(@green, @text, @inkWeight);
+      --nuui-text-marker-grey: mix(@subtext0, @text, @inkWeight);
+      --nuui-text-marker-lime: mix(@green, @text, @inkWeight);
+      --nuui-text-marker-magenta: mix(@pink, @text, @inkWeight);
+      --nuui-text-marker-orange: mix(@peach, @text, @inkWeight);
+      --nuui-text-marker-pink: mix(@pink, @text, @inkWeight);
+      --nuui-text-marker-purple: mix(@mauve, @text, @inkWeight);
+      --nuui-text-marker-red: mix(@red, @text, @inkWeight);
+      --nuui-text-marker-yellow: mix(@yellow, @text, @inkWeight);
+      --nuui-text-on-danger: @onDanger;
+      --nuui-text-on-ghost: @text;
+      --nuui-text-on-info: @onInfo;
+      --nuui-text-on-marker-default: @markerContent;
+      --nuui-text-on-marker-inverted: @markerContent;
+      --nuui-text-on-primary: @onAccent;
+      --nuui-text-on-success: @onSuccess;
+      --nuui-text-on-theme-nav: @text;
+      --nuui-text-on-warning: @onWarning;
+      --nuui-text-subtle: @subtext0;
+      --nuui-text-success: mix(@green, @text, @inkWeight);
+      --nuui-text-warning: mix(@yellow, @text, @inkWeight);
+    }
+}

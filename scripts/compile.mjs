@@ -3,7 +3,8 @@ import { readFile } from 'node:fs/promises';
 import less from 'less';
 import postcss from 'postcss';
 import selectorParser from 'postcss-selector-parser';
-import { download } from './source.mjs';
+import { download, loadStylesheets, inspectCSS } from './source.mjs';
+import { escapeSelector, errorPageGuard, legacyGuard, nuGuard, errorPageScope, darkScope, rootTokenScope, rootOverrideScope, nuTokenScope } from './guards.mjs';
 import expectedOrder from '../test/fixtures/neutral-order.json' with { type: 'json' };
 
 export const libraryURL = 'https://userstyles.catppuccin.com/lib/std/v1.less';
@@ -102,13 +103,8 @@ export function checkNeutralOrder(css, flavor) {
   return `${flavor} neutral ordering: PASS (${spec.direction}, ${checked} rules)`;
 }
 
-const escapeSelector = (selector) => selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-export const errorPageGuard = ':where(:not(:has(> body.Page--error)))';
-export const errorPageGuardPattern = escapeSelector(errorPageGuard);
-export const errorPageScope = `:root${errorPageGuard}`;
-export const darkScope = `.dark-mode${errorPageGuard}`;
-export const rootTokenScope = `${':root'.repeat(5)}${errorPageGuard}`;
-const flavoredScope = `${escapeSelector(rootTokenScope)}(?:\\.dark-mode)?(?: body)? `;
+export { errorPageGuard, errorPageGuardPattern, errorPageScope, darkScope, rootTokenScope, rootOverrideScope } from './guards.mjs';
+const flavoredScope = `${escapeSelector(rootOverrideScope)}(?:\\.dark-mode)?(?: body)? `;
 const channel = '[+-]?(?:\\d*\\.)?\\d+%?';
 const color = `(?:#(?:[\\da-f]{3}|[\\da-f]{4}|[\\da-f]{6}|[\\da-f]{8})|(?:rgb|rgba|hsl|hsla)\\(\\s*${channel}(?:\\s*,\\s*|\\s+)${channel}(?:\\s*,\\s*|\\s+)${channel}(?:\\s*[,/]\\s*${channel})?\\s*\\))`;
 const flavoredOverrideScope = { pattern: flavoredScope };
@@ -127,8 +123,8 @@ export const tokenOverrides = [
   ...['.Page--edit-wiki', '.Page--find-wiki', '.Page--view-wiki', '[class^=Page--wiki]'].flatMap((page) =>
     [['is_not-yet', 'warning'], ['is_done', 'success']].flatMap(([state, scale]) => {
       const card = `${page} .card.-wiki-migration.${state}`;
-      const light = literalScope(`${rootTokenScope}:not(.dark-mode) `);
-      const dark = literalScope(`${rootTokenScope}.dark-mode `);
+      const light = literalScope(`${rootOverrideScope}:not(.dark-mode) `);
+      const dark = literalScope(`${rootOverrideScope}.dark-mode `);
       const accent = `--${scale}ColorScaleAccent`;
       return [
         override(dark, `${card} a`, 'color', '--backgroundColorSchemeBase'),
@@ -190,12 +186,11 @@ export function checkOverrides(css) {
   });
 }
 
-const guardAST = selectorParser().astSync(errorPageGuard, { lossless: false }).first.first;
 const nodeShape = (node) => [node.type, node.type === 'combinator' ? node.value.trim() : node.value,
   node.namespace, node.nodes?.map(nodeShape)];
-const guardShape = JSON.stringify(nodeShape(guardAST));
+const guardShape = (guard) => JSON.stringify(nodeShape(selectorParser().astSync(guard, { lossless: false }).first.first));
 
-export function checkErrorPageExclusion(css) {
+export function checkErrorPageExclusion(css, addon = false) {
   css.walkRules((rule) => {
     for (let parent = rule.parent; parent; parent = parent.parent) {
       if (parent.type === 'atrule' && /^(?:-\w+-)?keyframes$/i.test(parent.name)) return;
@@ -206,8 +201,12 @@ export function checkErrorPageExclusion(css) {
       const compound = selector.nodes.slice(0, end < 0 ? undefined : end);
       const anchored = compound.some((node) =>
         (node.type === 'pseudo' && node.value === ':root') || (node.type === 'class' && node.value === 'dark-mode'));
-      if (!anchored || !compound.some((node) => JSON.stringify(nodeShape(node)) === guardShape)) {
-        throw new Error(`Missing error-page guard: ${selector}`);
+      const tokenSelector = new RegExp(`^${escapeSelector(rootTokenScope)}(?:\\.dark-mode)?(?: body)?(?: (?:\\[data-tooltip\\]|\\.message-tip|\\.simptip-(?:success|info|danger|error|warning)))?$`);
+      const rootTokens = tokenSelector.test(selector.toString().trim()) && rule.nodes.every((node) =>
+        node.type === 'comment' || (node.type === 'decl' && node.prop.startsWith('--')));
+      const expected = addon ? nuGuard : rootTokens ? errorPageGuard : legacyGuard;
+      if (!anchored || !compound.some((node) => JSON.stringify(nodeShape(node)) === guardShape(expected))) {
+        throw new Error(`Missing error-page guard or design guard: ${selector}`);
       }
     }
   });
@@ -236,19 +235,126 @@ export function checkDisabledContrast(css, flavor) {
   });
   if (!labels.length || backgrounds.size !== 2) throw new Error(`${flavor} missing disabled primary label/background`);
   const ratios = labels.flatMap((label) => [...backgrounds.values()].map((background) => {
-    const a = luminance(parseColor(label, '--textColorWeak'));
-    const b = luminance(parseColor(background, 'disabled background-color'));
-    return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+    return contrastRatio(label, background);
   }));
   const ratio = Math.min(...ratios);
   if (ratio < 3) throw new Error(`${flavor} disabled primary contrast: ${ratio.toFixed(2)}:1 < 3:1`);
   return `${flavor} disabled primary contrast: PASS (${ratio.toFixed(2)}:1 >= 3:1)`;
 }
 
+export function contrastRatio(a, b) {
+  const left = luminance(parseColor(a, 'foreground'));
+  const right = luminance(parseColor(b, 'background'));
+  return (Math.max(left, right) + 0.05) / (Math.min(left, right) + 0.05);
+}
+
+export const markerNames = ['pink', 'bordeaux', 'red', 'beige', 'orange', 'yellow', 'lime', 'green', 'cyan', 'blue', 'purple', 'magenta', 'grey'];
+export function nuContrastPairs() {
+  const pairs = [];
+  for (const content of ['text', 'icon']) {
+    for (const role of ['primary', 'danger', 'warning', 'success', 'info']) {
+      pairs.push([`${content}-on-${role}`, `bg-${role}-default`]);
+    }
+    for (const role of ['primary', 'danger']) {
+      for (const state of ['hover', 'active']) pairs.push([`${content}-on-${role}`, `bg-${role}-${state}`]);
+    }
+    for (const marker of markerNames) {
+      for (const state of ['default', 'shape']) {
+        for (const kind of ['default', 'inverted']) pairs.push([`${content}-on-marker-${kind}`, `bg-marker-${marker}-${state}`]);
+      }
+      for (const state of ['subtle', 'highlight']) pairs.push([`${content}-marker-${marker}`, `bg-marker-${marker}-${state}`]);
+    }
+    pairs.push([`${content}-on-theme-nav`, 'bg-theme-nav'], [`${content}-on-ghost`, 'bg-ghost-hover'],
+      [`${content}-on-ghost`, 'bg-ghost-active'], [`${content}-default`, 'bg-default'],
+      [`${content}-inverted`, 'bg-inverted']);
+    for (const role of ['danger', 'warning', 'success', 'info']) {
+      pairs.push([`${content}-${role}`, `bg-${role}-banner`], [`${content}-${role}`, `bg-${role}-subtle`]);
+    }
+  }
+  return pairs;
+}
+
+export function checkNuTokenTypes(css, discovered) {
+  const images = new Set(discovered.images);
+  const colors = new Set(discovered.names.filter((name) => !discovered.composites.includes(name)));
+  let checked = 0;
+  css.walkDecls(/^--nuui-/, (decl) => {
+    if (!images.has(decl.prop) && !colors.has(decl.prop)) return;
+    const alias = decl.value.match(/^var\((--[\w-]+)\)$/)?.[1];
+    const image = alias ? images.has(alias) : /[\w-]+-gradient\s*\(/i.test(decl.value);
+    if (images.has(decl.prop) !== image) throw new Error(`Token type mismatch: ${decl.prop} must be ${images.has(decl.prop) ? 'an image' : 'a color'}`);
+    if (!image && !(alias && colors.has(alias))) parseColor(decl.value, decl.prop);
+    checked++;
+  });
+  return `New design image/color type parity: PASS (${[...images].filter((name) => name.startsWith('--nuui-')).length} discovered image tokens; ${checked} assignments)`;
+}
+
+export const nuComponentTokens = {
+  '.project-nav-list': {
+    '--nuui-bg-ghost-inverted-hover': '--nuui-bg-ghost-hover',
+    '--nuui-bg-ghost-inverted-active': '--nuui-bg-ghost-active',
+  },
+  '.card.-wiki-migration.is_not-yet': {
+    '--nuui-text-on-marker-inverted': '--nuui-text-warning',
+    '--nuui-icon-on-marker-inverted': '--nuui-icon-warning',
+    'border-color': '--nuui-border-warning-subtle',
+  },
+  '.card.-wiki-migration.is_not-yet .wiki-migration-image svg path': { fill: '--nuui-icon-warning' },
+  '.card.-wiki-migration.is_not-yet .button': {
+    'background-color': '--nuui-bg-warning-default', 'border-color': '--nuui-bg-warning-default', color: '--nuui-text-on-warning',
+  },
+  '.card.-wiki-migration.is_not-yet .button:is(:hover, :focus, :focus-visible)': {
+    'background-color': '--nuui-bg-default', 'border-color': '--nuui-border-warning-subtle', color: '--nuui-text-warning',
+  },
+};
+
+export function nuContrastFloor(flavor, foreground, background) {
+  return flavor.split('/')[0] === 'latte' && /^(?:text|icon)-on-(?:primary|danger|warning|success|info)$/.test(foreground) &&
+    /^bg-(?:primary|danger|warning|success|info)-(?:default|hover|active)$/.test(background) ? 2.5 : 3;
+}
+
+export function checkNuStyle(css, flavor, reportException = console.log) {
+  checkErrorPageExclusion(css, true);
+  let rules = 0;
+  let minimum = Infinity;
+  const exceptions = new Set();
+  css.walkRules((rule) => {
+    const component = Object.entries(nuComponentTokens).find(([selector]) => rule.selector === `${nuTokenScope} ${selector}`)?.[1];
+    if (component) {
+      if (rule.nodes.length !== Object.keys(component).length || rule.nodes.some((decl) => decl.type !== 'decl' || decl.important || decl.value !== `var(${component[decl.prop]})`)) throw new Error(`Unexpected add-on component: ${rule.selector}`);
+      return;
+    }
+    const values = new Map(rule.nodes.filter((node) => node.type === 'decl').map((decl) => {
+      if (!decl.prop.startsWith('--nuui-')) throw new Error(`Unexpected add-on declaration: ${decl.prop}`);
+      return [decl.prop.slice(7), decl.value];
+    }));
+    for (const [foreground, background] of nuContrastPairs()) {
+      const ratio = contrastRatio(values.get(foreground), values.get(background));
+      minimum = Math.min(minimum, ratio);
+      const floor = nuContrastFloor(flavor, foreground, background);
+      if (ratio < floor) throw new Error(`${flavor} new design contrast: ${foreground} / ${background}: ${ratio.toFixed(2)}:1 < ${floor}:1`);
+      if (ratio < 3) exceptions.add(`${flavor.includes('/') ? flavor : `${flavor}/mauve`} contrast exception: ${foreground} / ${background}: ${ratio.toFixed(3)}:1 >= 2.5:1`);
+    }
+    const order = ['bg-canvas-backdrop', 'bg-canvas-default', 'bg-default', 'bg-floating'];
+    for (let index = 1; index < order.length; index++) {
+      const before = luminance(parseColor(values.get(order[index - 1]), order[index - 1]));
+      const after = luminance(parseColor(values.get(order[index]), order[index]));
+      if (before > after) throw new Error(`${flavor} new design neutral order: ${order[index - 1]} / ${order[index]}`);
+    }
+    if (values.get('bg-ghost-hover') === values.get('bg-ghost-active')) throw new Error('New design hover/active surfaces must differ');
+    rules++;
+  });
+  if (rules !== 4) throw new Error(`Expected four add-on root/body rules, got ${rules}`);
+  for (const message of exceptions) reportException(message);
+  return `${flavor} new design neutral ordering and contrast: PASS (${rules} rules; minimum ${minimum.toFixed(2)}:1; ${exceptions.size} Latte solid exceptions)`;
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
     const source = await readFile(new URL('../catppuccin.user.less', import.meta.url), 'utf8');
     const library = await download(libraryURL);
+    const discovered = inspectCSS((await loadStylesheets()).map(({ css }) => css).join('\n'));
+    const addon = await readFile(new URL('../catppuccin-nu.user.less', import.meta.url), 'utf8');
     for (const flavor of ['latte', 'frappe', 'macchiato', 'mocha']) {
       const result = await compile(flavor, source, library);
       const css = postcss.parse(result.css, { from: undefined, map: false });
@@ -266,6 +372,30 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       console.log(`${flavor}: PASS (${count} custom-property assignments)`);
       console.log(ordering);
     }
+    for (const flavor of ['latte', 'frappe', 'macchiato', 'mocha']) {
+      const css = postcss.parse((await compile(flavor, addon, library)).css);
+      console.log(checkNuTokenTypes(css, discovered));
+      console.log(checkNuStyle(css, flavor));
+      console.log(`${flavor} add-on: PASS`);
+    }
+    const accents = ['rosewater', 'flamingo', 'pink', 'mauve', 'red', 'maroon', 'peach', 'yellow', 'green', 'teal', 'blue', 'sapphire', 'sky', 'lavender', 'subtext0'];
+    for (const flavor of ['latte', 'frappe', 'macchiato', 'mocha']) {
+      for (const accent of accents.filter((accent) => accent !== 'mauve')) {
+        const addonCSS = postcss.parse((await compile(flavor, addon, library, flavor, accent)).css);
+        checkNuTokenTypes(addonCSS, discovered);
+        checkNuStyle(addonCSS, `${flavor}/${accent}`);
+        const mainCSS = postcss.parse((await compile(flavor, source, library, flavor, accent)).css);
+        checkNeutralOrder(mainCSS, flavor);
+        checkOverrides(mainCSS);
+        checkErrorPageExclusion(mainCSS);
+        checkDisabledContrast(mainCSS, flavor);
+      }
+    }
+    console.log('Both files compile; add-on contrast across all 15 accent choices and four flavors: PASS');
+    const mixedNu = postcss.parse((await compile('latte', addon, library, 'mocha', 'green')).css);
+    const nuValues = new Map();
+    mixedNu.walkRules((rule) => nuValues.set(rule.selector, rule.nodes.filter((decl) => decl.prop === '--nuui-bg-default').at(-1)?.value));
+    if (nuValues.get(nuTokenScope) === nuValues.get(`${nuTokenScope}.dark-mode`)) throw new Error('Add-on flavor switching failed');
     const mixed = postcss.parse((await compile('latte', source, library, 'mocha', 'green')).css, { from: undefined, map: false });
     const palettes = {};
     mixed.walkDecls('--backgroundColorBase', (decl) => {
