@@ -22,6 +22,15 @@ All subdomains of `backlog.com`, `backlog.jp`, and `backlogtool.com` are include
 Error pages (`body.Page--error`) are excluded entirely and retain Backlog's own colors.
 An internet connection is needed to resolve the standard library during compilation.
 
+## Backlog's new design
+
+For Backlog's opt-in new design, install both `catppuccin.user.less` and the
+[new design add-on](https://github.com/simochee/backlog-catppuccin/raw/main/catppuccin-nu.user.less).
+The add-on requires the main style: it maps the new `--nuui-*` tokens while the
+main style supplies the shared legacy tokens and tooltips. Choose the same
+flavors and accent in both styles. The add-on activates automatically when a
+`styles_nu-ui/` stylesheet is linked directly from the page head.
+
 ## Development
 
 Use Node.js 24 or newer and npm. Install the pinned dependencies:
@@ -42,7 +51,8 @@ Check live color-variable coverage (exits nonzero on missing assignments):
 npm run check:coverage
 ```
 
-Compile all four flavors and check RGB triplets and independent appearance switching:
+Compile both files in all four flavors and check RGB triplets, independent
+appearance switching, surface ordering, and add-on content/surface contrast (3:1 minimum):
 
 ```sh
 npm run check:less
@@ -66,6 +76,7 @@ Report remaining literal color rules for manual triage (not a CI check):
 
 ```sh
 npm run report:literals
+npm run report:literals -- --new-design
 ```
 
 The report groups selectors by stylesheet and prints property names with only
@@ -86,7 +97,8 @@ The command accepts the same optional extra stylesheet URLs described below.
 
 Generated text rules preserve the site's dark selector specificity, ancestor
 semantics and declaration importance with a zero-specificity `:where()` error-page
-guard. Generation and freshness checks also print non-dark color selectors with equal or greater specificity
+and new-design exclusion guard. Generation and freshness checks also print non-dark
+color selectors with equal or greater specificity
 that share a BEM block. This conservative report includes ancestors, descendants
 and different conditional contexts; it does not prove that selectors overlap or
 cause a visible conflict and does not fail the check. Confirmed transparent
@@ -95,7 +107,8 @@ subtask chips and migration-card links are restored separately by hand.
 The extractor discovers stylesheet URLs at runtime from the public error page
 at `https://simochee.backlog.com/this-page-does-not-exist`, then adds the Common,
 ReactApp, Kanban, Wiki, Git, Documents, React index and global-bar bundles from
-the discovered version path; it never signs in. Missing speculative bundles
+the discovered version path, plus the six `styles_nu-ui/` counterparts; it never
+signs in. Missing speculative bundles
 (HTTP 404) are skipped with a warning; linked stylesheets, extra URLs, and other
 fetch failures remain errors.
 Set `BACKLOG_PAGE_URL` to override the discovery page (relative stylesheet links
@@ -120,9 +133,10 @@ loads the remote standard library into memory, producing no generated files.
 
 Color literals, named colors, color functions, RGB triplets, and references to
 known color tokens are recognized. Numbers and dimensions are excluded. Composite
-shadows and gradients are reported separately as `excluded-composite` and left
-unchanged in Phase 1. Coverage counts all discovered color variables, then reports
-the assignable count and missing assignments separately. Passing coverage does
+shadows and gradients in the legacy set are reported separately and left
+unchanged in Phase 1. Coverage reports legacy and add-on assignments separately;
+the add-on includes color-bearing AI and elevation composites. Non-color tokens
+(such as dimensions and opacity) are left untouched. Passing coverage does
 not mean every visible color is themed: direct colors, runtime styles, and CSS
 only linked on authenticated pages remain for the human's Stylus check.
 

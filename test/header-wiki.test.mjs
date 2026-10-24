@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import postcss from 'postcss';
 import { selectorSpecificity, compare } from '@csstools/selector-specificity';
 import selectorParser from 'postcss-selector-parser';
-import { compile, darkScope, errorPageScope, checkErrorPageExclusion, checkOverrides, tokenOverrides, scopePattern } from '../scripts/compile.mjs';
+import { compile, rootOverrideScope, rootTokenScope, darkScope, errorPageScope, checkErrorPageExclusion, checkOverrides, tokenOverrides, scopePattern } from '../scripts/compile.mjs';
 
 const source = await readFile(new URL('../catppuccin.user.less', import.meta.url), 'utf8');
 const library = `#lib() { .palette() {
@@ -16,7 +16,7 @@ const library = `#lib() { .palette() {
   @green: @accent; @blue: @accent; @red: @accent; @peach: @accent;
   @yellow: @accent; @pink: @accent; @flamingo: @accent;
 } }`;
-const scope = ':root:root:root:root:root:where(:not(:has(> body.Page--error)))';
+const scope = rootOverrideScope;
 const flavoredScopes = ['', '.dark-mode'].flatMap((mode) =>
   ['', ' body'].map((body) => `${scope}${mode}${body} `));
 const expected = tokenOverrides.flatMap(({ scope, selector, property, token, important }) =>
@@ -29,7 +29,7 @@ for (const flavor of ['latte', 'frappe', 'macchiato', 'mocha']) {
     checkOverrides(css);
     checkErrorPageExclusion(css);
     const roots = [];
-    css.walkRules((rule) => { if (rule.selector === scope) roots.push(rule); });
+    css.walkRules((rule) => { if (rule.selector === rootTokenScope) roots.push(rule); });
     assert.equal(roots[0].nodes.find((decl) => decl.prop === '--iconColorWeak').value, flavor === 'latte' ? '#333333' : '#444444');
     for (const state of ['.is_disabled', '[disabled]']) {
       const selector = `${darkScope} .button--primary${state}`;

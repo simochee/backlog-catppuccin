@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import postcss from 'postcss';
-import { compile, checkOverrides } from '../scripts/compile.mjs';
+import { compile, rootOverrideScope, rootTokenScope, checkOverrides } from '../scripts/compile.mjs';
 
 const source = await readFile(new URL('../catppuccin.user.less', import.meta.url), 'utf8');
 const library = `#lib() { .palette() {
@@ -20,7 +20,7 @@ for (const flavor of ['latte', 'frappe', 'macchiato', 'mocha']) {
     const css = postcss.parse((await compile(flavor, source, library)).css);
     checkOverrides(css);
     for (const mode of ['', '.dark-mode']) {
-      const scope = `:root:root:root:root:root:where(:not(:has(> body.Page--error)))${mode}`;
+      const scope = `${rootOverrideScope}${mode}`;
       const declaration = (selector, property, required = true) => {
         let found;
         css.walkRules((rule) => {
@@ -60,7 +60,7 @@ for (const flavor of ['latte', 'frappe', 'macchiato', 'mocha']) {
       const aiIcon = '.project-nav-ai-pr:is(:hover, :focus) .project-nav-ai-pr__icon.icon';
       assert.equal(declaration(aiIcon, 'background-color').value, '#bbbbbb');
       for (const property of ['background', 'fill']) assert.equal(declaration(aiIcon, property, false), undefined);
-      const root = css.nodes.flatMap((node) => node.nodes || []).find((rule) => rule.selector === scope);
+      const root = css.nodes.flatMap((node) => node.nodes || []).find((rule) => rule.selector === `${rootTokenScope}${mode}`);
       assert.equal(root.nodes.find((decl) => decl.prop === '--defaultColorMain').value, '#8833aa');
       assert.equal(root.nodes.find((decl) => decl.prop === '--defaultColorAccent').value, '#8833aa');
     }
@@ -69,9 +69,9 @@ for (const flavor of ['latte', 'frappe', 'macchiato', 'mocha']) {
 
 test('sidebar override validation rejects layout, unrelated selectors and missing flavor scope', () => {
   for (const rule of [
-    ':root:root:root:root:root:where(:not(:has(> body.Page--error))) .project-nav__back {display:none}',
-    ':root:root:root:root:root:where(:not(:has(> body.Page--error))) .project-nav-list__text {background-color:#abc}',
-    ':root:root:root:root:root:where(:not(:has(> body.Page--error))) .project-nav-other {color:#abc}',
+    `${rootOverrideScope} .project-nav__back {display:none}`,
+    `${rootOverrideScope} .project-nav-list__text {background-color:#abc}`,
+    `${rootOverrideScope} .project-nav-other {color:#abc}`,
     '.project-nav-list__text {color:#abc}',
   ]) assert.throws(() => checkOverrides(postcss.parse(rule)), /Unexpected color override/);
 });
@@ -82,7 +82,7 @@ test('mixed flavors give each sidebar its own recessed surface', async () => {
   for (const [mode, expected] of [['', '#cccccc'], ['.dark-mode', '#dddddd']]) {
     const values = [];
     css.walkRules((rule) => {
-      if (postcss.list.comma(rule.selector).includes(`:root:root:root:root:root:where(:not(:has(> body.Page--error)))${mode} .project-nav__back`)) {
+      if (postcss.list.comma(rule.selector).includes(`${rootOverrideScope}${mode} .project-nav__back`)) {
         for (const decl of rule.nodes) if (decl.prop === 'background-color') values.push(decl.value);
       }
     });
@@ -91,12 +91,12 @@ test('mixed flavors give each sidebar its own recessed surface', async () => {
 });
 
 test('sidebar allowlist validates each selector in mixed comma lists', () => {
-  const allowed = ':root:root:root:root:root:where(:not(:has(> body.Page--error))) .project-nav__back';
-  const unlisted = ':root:root:root:root:root:where(:not(:has(> body.Page--error))) .project-nav-other';
+  const allowed = `${rootOverrideScope} .project-nav__back`;
+  const unlisted = `${rootOverrideScope} .project-nav-other`;
   for (const selectors of [`${allowed}, ${unlisted}`, `${unlisted}, ${allowed}`, `${allowed}, .project-nav__back`]) {
     assert.throws(() => checkOverrides(postcss.parse(`${selectors} {background-color:#abc}`)), /Unexpected color override/);
   }
-  const icon = ':root:root:root:root:root:where(:not(:has(> body.Page--error))) .project-nav-ai-pr:is(:hover, :focus) .project-nav-ai-pr__icon.icon';
+  const icon = `${rootOverrideScope} .project-nav-ai-pr:is(:hover, :focus) .project-nav-ai-pr__icon.icon`;
   for (const property of ['background', 'fill']) {
     assert.throws(() => checkOverrides(postcss.parse(`${icon} {${property}:#abc}`)), /Unexpected color override/);
   }

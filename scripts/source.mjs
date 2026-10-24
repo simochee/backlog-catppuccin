@@ -42,6 +42,7 @@ export function stylesheetURLs(html, speculativeURLs = new Set()) {
     for (const path of [
       'styles/Common.css', 'styles/ReactApp.css', 'styles/Kanban.css',
       'styles/Wiki.css', 'styles/Git.css', 'styles/Documents.css',
+      ...['Common', 'ReactApp', 'Kanban', 'Wiki', 'Git', 'Documents'].map((name) => `styles_nu-ui/${name}.css`),
       'react/static/css/index.css', 'react/global-bar/static/css/main.css',
     ]) {
       const candidate = new URL(path, base).href;

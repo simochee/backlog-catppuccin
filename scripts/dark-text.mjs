@@ -3,7 +3,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import postcss from 'postcss';
 import selectorParser from 'postcss-selector-parser';
 import { selectorSpecificity, compare } from '@csstools/selector-specificity';
-import { darkScope } from './compile.mjs';
+import { darkScope } from './guards.mjs';
 import { loadStylesheets } from './source.mjs';
 
 export const blockStart = '    // BEGIN GENERATED DARK TEXT (npm run generate:dark-text)';
@@ -158,7 +158,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     const check = process.argv.includes('--check');
     const extras = process.argv.slice(2).filter((arg) => arg !== '--check');
     const stylesheets = await loadStylesheets(extras);
-    const result = findDarkText(stylesheets.map(({ css }) => css));
+    const result = findDarkText(stylesheets.filter(({ url }) => !url.includes('/styles_nu-ui/')).map(({ css }) => css));
     for (const pattern of ['a', 'b']) console.log(`Pattern ${pattern.toUpperCase()} (${result[pattern].length}):\n${result[pattern].join('\n')}`);
     console.log(`Potential non-dark color conflicts (${result.conflicts.length}; review only):`);
     for (const conflict of result.conflicts) console.log(`${conflict.generated} <- ${conflict.selector}`);

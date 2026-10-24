@@ -7,7 +7,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { promisify } from 'node:util';
 import { execFile } from 'node:child_process';
 import postcss from 'postcss';
-import { compile, checkDisabledContrast, darkScope, rootTokenScope, checkErrorPageExclusion, errorPageScope, checkOverrides, checkNeutralOrder, parseColor, checkRGBCounterpart } from '../scripts/compile.mjs';
+import { compile, checkDisabledContrast, darkScope, rootTokenScope, rootOverrideScope, nuContrastPairs, checkErrorPageExclusion, errorPageScope, checkOverrides, checkNeutralOrder, parseColor, checkRGBCounterpart } from '../scripts/compile.mjs';
 import expectedOrder from './fixtures/neutral-order.json' with { type: 'json' };
 import { blockStart, blockEnd } from '../scripts/dark-text.mjs';
 
@@ -26,7 +26,7 @@ test('CLI checks execute from a path containing spaces and URL-encoded character
   await mkdir(join(directory, 'scripts'));
   await mkdir(join(directory, 'test/fixtures'), { recursive: true });
   await copyFile(new URL('./fixtures/neutral-order.json', import.meta.url), join(directory, 'test/fixtures/neutral-order.json'));
-  for (const file of ['compile.mjs', 'coverage.mjs', 'source.mjs', 'dark-text.mjs', 'literals.mjs']) {
+  for (const file of ['compile.mjs', 'coverage.mjs', 'source.mjs', 'dark-text.mjs', 'literals.mjs', 'guards.mjs']) {
     await copyFile(new URL(`../scripts/${file}`, import.meta.url), join(directory, 'scripts', file));
   }
   await symlink(fileURLToPath(new URL('../node_modules', import.meta.url)), join(directory, 'node_modules'), 'dir');
@@ -39,6 +39,19 @@ test('CLI checks execute from a path containing spaces and URL-encoded character
     ${rootTokenScope} { .theme(@lightFlavor); }
     ${rootTokenScope}.dark-mode { .theme(@darkFlavor); }
     ${darkScope} .button--primary.is_disabled, ${darkScope} .button--primary[disabled] { background-color: #333; }`);
+  const nuAssignments = [...new Set(nuContrastPairs().flat())].map((name) =>
+    `--nuui-${name}: ${name.startsWith('bg-') ? '#ffffff' : '#000000'};`).join(' ');
+  const { nuTokenScope } = await import('../scripts/guards.mjs');
+  await writeFile(join(directory, 'catppuccin-nu.user.less'), `${importLine}
+    .nu(@flavor) { ${nuAssignments}
+      --nuui-bg-default: if((@flavor = latte), #fff, #eee);
+      --nuui-bg-canvas-backdrop: #000;
+      --nuui-bg-canvas-default: #ddd;
+      --nuui-bg-floating: #fff;
+      --nuui-bg-ghost-active: #eee;
+    }
+    ${nuTokenScope} { .nu(@lightFlavor); body { .nu(@lightFlavor); } }
+    ${nuTokenScope}.dark-mode { .nu(@darkFlavor); body { .nu(@darkFlavor); } }`);
   await writeFile(join(directory, 'mock-fetch.mjs'), `globalThis.fetch = async (url) => new Response(
     String(url).endsWith('.less') ? '/* fixture library */' :
     String(url).endsWith('.css') ? ':root { --backgroundColorBase: red; }' :
@@ -64,13 +77,15 @@ test('CLI checks execute from a path containing spaces and URL-encoded character
   const file = join(directory, 'catppuccin.user.less');
   await writeFile(file, `${blockStart}\n${blockEnd}`);
   await writeFile(join(directory, 'mock-dark-fetch.mjs'), `globalThis.fetch = async (url) => new Response(
+    String(url).includes('/styles_nu-ui/') ? '.newOnly {color:var(--backgroundColorSchemeBase)} .dark-mode .newOnly {color:var(--textColorPrimary)}' :
     String(url).endsWith('.css') ? '.pill {color:var(--backgroundColorSchemeBase)} .dark-mode .pill {color:var(--textColorPrimary)}' :
-    '<link rel="stylesheet" href="https://assets.backlog.com/fixture.css">');`);
+    '<link rel="stylesheet" href="https://assets.backlog.com/fixture.css"><link rel="stylesheet" href="https://assets.backlog.com/styles_nu-ui/fixture.css">');`);
   const args = ['--import', pathToFileURL(join(directory, 'mock-dark-fetch.mjs')).href, join(directory, 'scripts/dark-text.mjs')];
   const run = promisify(execFile);
   await assert.rejects(run(process.execPath, [...args, '--check']), /out of date/);
   await run(process.execPath, args);
   const { stdout } = await run(process.execPath, [...args, '--check']);
+  assert.doesNotMatch(stdout, /newOnly/);
   assert.match(stdout, /Pattern A \(1\):\n.pill[\s\S]*up to date/);
 });
 
@@ -161,7 +176,7 @@ test('RGB checks name mismatched and missing counterparts', () => {
   }
 });
 
-const scope = ':root:root:root:root:root:where(:not(:has(> body.Page--error)))';
+const scope = rootOverrideScope;
 for (const color of ['#abc', '#aabbcc', 'rgb(10, 20, 30)', 'rgba(10, 20, 30, 0.5)', 'hsl(120, 50%, 50%)', 'rgb(10 20 30 / 50%)', 'hsl(120 50% 50%)']) {
   test(`override allowlist accepts themed colors in ${color}`, () => {
     for (const prefix of [scope, `${scope}.dark-mode`, `${scope} body`]) {
@@ -188,17 +203,17 @@ test('override allowlist rejects mismatched selectors, values and unlisted prope
 test('override allowlist preserves token overrides and custom assignments', () => {
   assert.doesNotThrow(() => checkOverrides(postcss.parse(`
     :root { --example: #abc; }
-    .dark-mode:where(:not(:has(> body.Page--error))) .example { color: var(--backgroundColorSchemeBase); }
-    .dark-mode:where(:not(:has(> body.Page--error))) .pill--square.-subtasking { color: var(--textColorWeak); }
-    :root:where(:not(:has(> body.Page--error))):not(.dark-mode) body.Page--view-kanban .card { background-color: var(--backgroundColorSchemeBase); }
+    ${darkScope} .example { color: var(--backgroundColorSchemeBase); }
+    ${darkScope} .pill--square.-subtasking { color: var(--textColorWeak); }
+    ${errorPageScope}:not(.dark-mode) body.Page--view-kanban .card { background-color: var(--backgroundColorSchemeBase); }
   `)));
 });
 
 test('error-page exclusion rejects any unguarded selector, including mixed lists and nested contexts', () => {
-  for (const selector of [':root', 'body:not(.Page--error)', '.dark-mode .pill', `${errorPageScope}, .pill`, `[title="${errorPageScope}"]`]) {
+  for (const selector of [':root', 'body:not(.Page--error)', '.dark-mode .pill', `${errorPageScope}, .pill`, `[title='${errorPageScope}']`]) {
     assert.throws(() => checkErrorPageExclusion(postcss.parse(`@media screen {${selector} {--example:red}}`)), /Missing error-page guard/);
   }
-  assert.doesNotThrow(() => checkErrorPageExclusion(postcss.parse(`${errorPageScope}, ${errorPageScope}.dark-mode .pill {--example:red}`)));
+  assert.doesNotThrow(() => checkErrorPageExclusion(postcss.parse(`${rootTokenScope}, ${rootTokenScope}.dark-mode body {--example:red}`)));
 });
 
 test('disabled contrast checks both states and reports flavor and measured ratio', () => {
@@ -232,7 +247,7 @@ test('error-page guard must be complete and belong to the leading root or dark c
     '.other:where(:not(:has(> body.Page--error)))',
   ]) assert.throws(() => checkErrorPageExclusion(postcss.parse(`${selector} {color:red}`)), /Missing error-page guard/);
   assert.doesNotThrow(() => checkErrorPageExclusion(postcss.parse(`
-    ${darkScope} .item:is(.a, .b), ${rootTokenScope} body {color:red}
+    ${darkScope} .item:is(.a, .b), ${rootOverrideScope} body {color:red}
     @keyframes pulse {from {opacity:0} to {opacity:1}}
     @-webkit-keyframes pulse {50% {opacity:0}}
   `)));

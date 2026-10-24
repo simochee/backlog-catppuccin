@@ -5,7 +5,8 @@ import selectorParser from 'postcss-selector-parser';
 import valueParser from 'postcss-value-parser';
 import colorNames from 'color-name';
 import { loadStylesheets, download } from './source.mjs';
-import { compile, libraryURL, errorPageGuardPattern } from './compile.mjs';
+import { compile, libraryURL } from './compile.mjs';
+import { escapeSelector, errorPageGuard, legacyGuard, nuGuard } from './guards.mjs';
 
 const properties = /^(?:color|background(?:-color|-image)?|border(?:-(?:top|right|bottom|left|block(?:-start|-end)?|inline(?:-start|-end)?))?(?:-color)?|outline(?:-color)?|(?:box|text)-shadow|text-decoration(?:-color)?|caret-color|accent-color|column-rule(?:-color)?|fill|stroke)$/i;
 const compare = (a, b) => a < b ? -1 : a > b ? 1 : 0;
@@ -44,7 +45,7 @@ function overrideIndex(css) {
     const conditions = context(rule);
     if (!conditions) return;
     for (let selector of postcss.list.comma(rule.selector)) {
-      selector = selector.replace(new RegExp(errorPageGuardPattern, 'g'), '');
+      selector = selector.replace(new RegExp([errorPageGuard, legacyGuard, nuGuard].map(escapeSelector).join('|'), 'g'), '');
       selector = selector.replace(/^:root(?::root){4}(\.dark-mode)?\s+/, (_, dark) => dark ? '.dark-mode ' : '');
       selector = selector.replace(/^:root(\.dark-mode)\s+/, '$1 ');
       const key = normalize(selector);
@@ -74,7 +75,7 @@ export function findLiterals(stylesheets, overrideCSS = '') {
       if (!conditions) return;
       for (const input of postcss.list.comma(rule.selector)) {
         const selector = normalize(input);
-        const candidates = [...(overrides.get(selector) || []),
+        const candidates = url.includes('/styles_nu-ui/') ? [] : [...(overrides.get(selector) || []),
           ...(selector.startsWith('.dark-mode ') ? overrides.get(selector.slice(11)) || [] : [])];
         for (const decl of rule.nodes) {
           if (decl.type !== 'decl' || !properties.test(decl.prop)) continue;
@@ -137,7 +138,9 @@ export function renderLiterals(report) {
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   let stage = 'load stylesheets';
   try {
-    const stylesheets = await loadStylesheets(process.argv.slice(2));
+    const newDesignOnly = process.argv.includes('--new-design');
+    const downloaded = await loadStylesheets(process.argv.slice(2).filter((arg) => arg !== '--new-design'));
+    const stylesheets = downloaded.filter(({ url }) => !newDesignOnly || url.includes('/styles_nu-ui/'));
     stage = 'read userstyle';
     const source = await readFile(new URL('../catppuccin.user.less', import.meta.url), 'utf8');
     stage = 'download library';
